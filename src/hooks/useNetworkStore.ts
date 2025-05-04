@@ -22,7 +22,7 @@ const MAX_AGE = 99;
 const MAX_CELLS = 100; // Limit the number of cells for performance
 const GRID_SIZE = 500; // Size of the visualization area
 const CLONE_DISTANCE_THRESHOLD = 50; // Min distance between parent and clone
-const MOVE_STEP = 10; // How much cells move per tick towards liked cells
+const MOVE_STEP = 20; // How much cells move per tick towards liked cells (increased from 10)
 
 // --- Helper Functions ---
 
