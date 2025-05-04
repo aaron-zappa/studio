@@ -15,7 +15,8 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { startAutoTick, stopAutoTick } from '@/hooks/useNetworkStore';
 import { Slider } from '@/components/ui/slider';
-import { AlertCircle, Bot, BrainCircuit, Clock, HelpCircle, MessageSquare, Plus, Send, Trash2, Zap, Milestone, ListTree, Target, History, User, RefreshCw, BedDouble } from 'lucide-react'; // Added BedDouble
+import { AlertCircle, Bot, BrainCircuit, Clock, HelpCircle, MessageSquare, Plus, Send, Trash2, Zap, Milestone, ListTree, Target, History, User, RefreshCw, BedDouble, ScanLine, Thermometer, BarChart, Waves, Wind, Lightbulb, Droplet, Rss, Eye, Ear } from 'lucide-react'; // Added Sensor Icons
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Added Select
 import {
   Sidebar,
   SidebarContent,
@@ -30,6 +31,20 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
+
+// Define sensor types
+const sensorTypes = [
+    { value: 'Temperature Sensor', label: 'Temperature', icon: Thermometer },
+    { value: 'Pressure Sensor', label: 'Pressure', icon: BarChart }, // Using BarChart as proxy
+    { value: 'Humidity Sensor', label: 'Humidity', icon: Droplet },
+    { value: 'Light Sensor', label: 'Light', icon: Lightbulb },
+    { value: 'Motion Sensor', label: 'Motion', icon: Eye }, // Using Eye as proxy
+    { value: 'Sound Sensor', label: 'Sound', icon: Ear }, // Using Ear as proxy
+    { value: 'Gas Sensor', label: 'Gas', icon: Wind }, // Using Wind as proxy
+    { value: 'Proximity Sensor', label: 'Proximity', icon: ScanLine },
+    { value: 'Flow Sensor', label: 'Flow', icon: Waves },
+    { value: 'Signal Sensor', label: 'Signal', icon: Rss },
+];
 
 
 export const ControlPanel: React.FC = () => {
@@ -71,6 +86,8 @@ export const ControlPanel: React.FC = () => {
   const [isSettingPurpose, setIsSettingPurpose] = useState(false); // Loading state for purpose setting
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [isAskingForHelp, setIsAskingForHelp] = useState(false);
+  const [customRole, setCustomRole] = useState(''); // State for custom role input
+  const [selectedSensorType, setSelectedSensorType] = useState<string | undefined>(undefined); // State for selected sensor type
 
 
   const selectedCell = selectedCellId ? getCellById(selectedCellId) : null;
@@ -81,6 +98,14 @@ export const ControlPanel: React.FC = () => {
   useEffect(() => {
     setNewPurpose(purpose); // Sync local state if global purpose changes externally
   }, [purpose]);
+
+   // Reset sensor type when custom role changes from 'Sensor'
+   useEffect(() => {
+       if (customRole.trim().toLowerCase() !== 'sensor') {
+           setSelectedSensorType(undefined);
+       }
+   }, [customRole]);
+
 
   const handleInitialize = () => {
     initializeNetwork(networkSize);
@@ -173,8 +198,28 @@ export const ControlPanel: React.FC = () => {
 
 
   const handleAddCell = () => {
-    addCell();
-    toast({ title: "Cell Added" });
+    let expertiseToAdd: string | undefined = undefined;
+    const roleInput = customRole.trim();
+
+    if (roleInput) {
+        if (roleInput.toLowerCase() === 'sensor') {
+             if (selectedSensorType) {
+                 expertiseToAdd = selectedSensorType; // Use selected sensor type
+             } else {
+                 toast({ title: "Error", description: "Please select a sensor type.", variant: "destructive" });
+                 return; // Don't add cell if 'Sensor' is typed but no type is selected
+             }
+        } else {
+            expertiseToAdd = roleInput; // Use the custom typed role
+        }
+    }
+    // If no custom role is specified (or 'Sensor' was typed but type wasn't selected yet),
+    // the addCell action in the store will use its default "next role" logic.
+
+    addCell(undefined, expertiseToAdd); // Pass undefined parent, optional expertise
+    toast({ title: "Cell Added", description: expertiseToAdd ? `Added with expertise: ${expertiseToAdd}` : "Added with next available role." });
+    setCustomRole(''); // Clear custom role input after adding
+    setSelectedSensorType(undefined); // Clear selected sensor type
   };
 
   const handleRemoveCell = () => {
@@ -189,7 +234,7 @@ export const ControlPanel: React.FC = () => {
 
   const handleCloneCell = () => {
       if(selectedCellId && selectedCell?.status === 'active') {
-          addCell(selectedCellId);
+          addCell(selectedCellId); // Pass parent ID for cloning
            toast({ title: "Cell Cloned", description: `Created clone of Cell ${selectedCellId.substring(0,6)}.` });
       } else {
           toast({ title: "Error", description: "Select an active cell to clone.", variant: "destructive" });
@@ -267,10 +312,37 @@ export const ControlPanel: React.FC = () => {
                        </Button>
                    </div>
 
-                    <Separator />
+                   {/* Add Cell Section */}
+                   <Separator />
+                   <div className="space-y-2">
+                     <Label htmlFor="custom-role">Add Cell with Role (Optional)</Label>
+                     <Input
+                       id="custom-role"
+                       placeholder="Enter expertise (or 'Sensor')"
+                       value={customRole}
+                       onChange={(e) => setCustomRole(e.target.value)}
+                     />
+                     {customRole.trim().toLowerCase() === 'sensor' && (
+                         <Select value={selectedSensorType} onValueChange={setSelectedSensorType}>
+                             <SelectTrigger className="w-full">
+                                 <SelectValue placeholder="Select Sensor Type..." />
+                             </SelectTrigger>
+                             <SelectContent>
+                                 {sensorTypes.map(sensor => (
+                                     <SelectItem key={sensor.value} value={sensor.value}>
+                                         <div className="flex items-center gap-2">
+                                             <sensor.icon className="size-4 text-muted-foreground" />
+                                             {sensor.label}
+                                         </div>
+                                     </SelectItem>
+                                 ))}
+                             </SelectContent>
+                         </Select>
+                     )}
                      <Button onClick={handleAddCell} size="sm" variant="secondary" className="w-full">
-                        <Plus className="mr-2 size-4" /> Add Cell (Next Role)
+                        <Plus className="mr-2 size-4" /> Add Cell {customRole ? `(${customRole.trim()})` : "(Next Role)"}
                      </Button>
+                   </div>
                 </AccordionContent>
               </AccordionItem>
 
@@ -330,7 +402,7 @@ export const ControlPanel: React.FC = () => {
 
                          <h4 className="font-medium flex items-center gap-2"><History className="size-4"/>History ({selectedCell.history.length})</h4>
                          <ScrollArea className="h-40 w-full rounded-md border p-2 text-xs bg-muted/30">
-                            {selectedCell.history.length === 0 && <p className="text-muted-foreground italic">No history yet.</p>}
+                            {selectedCell.history.length === 0 && <span className="text-muted-foreground italic">No history yet.</span>}
                              {selectedCell.history.slice().reverse().map(entry => ( // Reverse for newest first
                                  <div key={entry.seq} className="mb-1.5 leading-relaxed">
                                      <span className="text-muted-foreground mr-1">[{entry.age}]</span>

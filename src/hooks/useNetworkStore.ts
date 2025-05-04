@@ -20,15 +20,14 @@ import {
   RouteMessageOutput,
 } from '@/ai/flows/message-routing';
 import { nanoid } from 'nanoid'; // Using nanoid for unique IDs
-import {produce} from 'immer'; // Correct import for zustand/immer
 
 
 const MAX_AGE = 99;
 const MAX_CELLS = 100; // Limit the number of cells for performance
 const GRID_SIZE = 500; // Size of the visualization area
 const CLONE_DISTANCE_THRESHOLD = 50; // Min distance between parent and clone
-const MOVE_STEP = 70; // Movement step (further increased)
-const POSITION_HISTORY_LIMIT = 15; // Store the last 15 positions for trails
+const MOVE_STEP = 100; // Increased movement step for more noticeable movement
+const POSITION_HISTORY_LIMIT = 25; // Increased history limit for longer trails
 const MAX_HISTORY = 100; // Max history entries per cell
 const SLEEP_THRESHOLD = 50; // Ticks of inactivity before sleeping
 const SLEEP_CHANCE_ON_TICK = 0.05; // 5% chance per tick to consider sleeping if inactive
@@ -233,7 +232,7 @@ interface NetworkActions {
   initializeNetwork: (count: number) => void;
   setPurpose: (purpose: string) => Promise<void>;
   tick: () => void;
-  addCell: (parentCellId?: CellId) => void;
+  addCell: (parentCellId?: CellId, expertise?: string) => void; // Updated signature
   removeCell: (cellId: CellId) => void;
   sendMessage: (sourceId: CellId | 'user', targetId: CellId | 'broadcast' | 'user', content: string) => Promise<void>;
   getCellById: (cellId: CellId) => Cell | undefined;
@@ -360,18 +359,19 @@ export const useNetworkStore = create(
 
           // --- Sleeping Logic ---
           if (cell.status === 'sleeping') {
+             // Check for wake-up message (handled in sendMessage/handleMessageReceptionLogic)
              // Small chance to wake up randomly
              if (Math.random() < RANDOM_WAKE_CHANCE) {
                  cell.status = 'active';
                  cell.lastActiveTick = state.tickCount;
                  _addHistoryEntry(cell, { type: 'status', text: `Woke up spontaneously.` });
              } else {
-                 return; // Sleeping cells do nothing else
+                 return; // Sleeping cells do nothing else this tick
              }
           }
 
           // --- Active Cell Logic ---
-          cell.lastActiveTick = state.tickCount; // Update last active tick while active
+          // cell.lastActiveTick = state.tickCount; // Update last active tick only when truly active (e.g., receiving/sending message, specific actions) - Moved to relevant places
 
            // Check for sleeping condition based on inactivity and chance
            if (state.tickCount - cell.lastActiveTick > SLEEP_THRESHOLD && Math.random() < SLEEP_CHANCE_ON_TICK) {
@@ -381,43 +381,19 @@ export const useNetworkStore = create(
            }
 
 
-           // Active cell logic (simplified)
-           if (state.tickCount % 20 === 0 && Math.random() < 0.1) {
-              _addHistoryEntry(cell, { type: 'decision', text: `Internal check at age ${cell.age}. Status: OK.` });
-           }
-
-           // Cloning logic only triggers if below max cells and active
-           if (cell.age > 15 && cell.age % 25 === 0 && Object.keys(state.cells).length < MAX_CELLS && Math.random() < 0.2) {
-                const newCellId = nanoid(8);
-                const parentCell = cell;
-                const existingPositions = Object.values(state.cells).filter(c => c).map(c => c!.position);
-                const position = getClonedPosition(parentCell.position, existingPositions);
-                const assignedRole = { expertise: parentCell.expertise, goal: parentCell.goal };
-
-                const newCell: Cell = {
-                   id: newCellId,
-                   age: 0,
-                   expertise: assignedRole.expertise,
-                   goal: assignedRole.goal,
-                   position,
-                   positionHistory: [position],
-                   isAlive: true,
-                   status: 'active', // Clones start active
-                   lastActiveTick: state.tickCount,
-                   version: 1,
-                   likedCells: [parentCell.id],
-                   history: [],
-                };
-                _addHistoryEntry(newCell, { type: 'clone', text: `Cloned from Cell ${parentCell.id}. Inherited Expertise: ${newCell.expertise}, Goal: ${newCell.goal}` });
-                _addHistoryEntry(parentCell, { type: 'clone', text: `Cloned itself. New cell ID: ${newCellId}` });
-                if (!parentCell.likedCells.includes(newCellId)) {
-                   parentCell.likedCells.push(newCellId);
-                   parentCell.version = (parentCell.version ?? 0) + 1;
+           // Active cell logic (simplified) - Only run if truly active
+           if (cell.status === 'active') {
+                if (state.tickCount % 20 === 0 && Math.random() < 0.1) {
+                    _addHistoryEntry(cell, { type: 'decision', text: `Internal check at age ${cell.age}. Status: OK.` });
+                     cell.lastActiveTick = state.tickCount; // Internal checks count as activity
                 }
-                state.cells[newCellId] = newCell;
-                console.log(`Added cell ${newCellId} cloned from ${parentCell.id}`);
-           }
 
+                // Cloning logic only triggers if below max cells and active
+                if (cell.age > 15 && cell.age % 25 === 0 && Object.keys(state.cells).length < MAX_CELLS && Math.random() < 0.2) {
+                    get().addCell(cell.id); // Call addCell for cloning logic
+                    cell.lastActiveTick = state.tickCount; // Cloning counts as activity
+                }
+           }
 
         });
          const MAX_MESSAGES_DISPLAYED = 50;
@@ -476,10 +452,10 @@ export const useNetworkStore = create(
              }
 
              const driftAngle = Math.random() * 2 * Math.PI;
-             const driftStrength = MOVE_STEP * 0.1;
+             const driftStrength = MOVE_STEP * 0.1; // Reduce random drift influence
              moveX += Math.cos(driftAngle) * driftStrength;
              moveY += Math.sin(driftAngle) * driftStrength;
-             moved = true;
+             moved = true; // Consider drift as movement
 
              if (moved || Math.abs(repulsionX) > 0.1 || Math.abs(repulsionY) > 0.1) {
                  const totalMoveDist = Math.sqrt(moveX * moveX + moveY * moveY);
@@ -501,6 +477,7 @@ export const useNetworkStore = create(
                  }
 
                  cell.version = (cell.version ?? 0) + 1;
+                 cell.lastActiveTick = state.tickCount; // Movement counts as activity
              }
 
              const originalLikedCount = cell.likedCells.length;
@@ -511,7 +488,8 @@ export const useNetworkStore = create(
       });
     },
 
-     addCell: (parentCellId?: CellId) => {
+     // Updated addCell to accept optional custom expertise
+     addCell: (parentCellId?: CellId, customExpertise?: string) => {
         set(state => {
             if (Object.keys(state.cells).length >= MAX_CELLS) {
                 console.warn("Max cell limit reached. Cannot add new cell.");
@@ -526,9 +504,18 @@ export const useNetworkStore = create(
                 : getRandomPosition(existingPositions);
 
             let assignedRole: { expertise: string; goal: string; } | undefined = undefined;
-            if (parentCell) {
-                assignedRole = { expertise: parentCell.expertise, goal: parentCell.goal };
+
+            if (customExpertise) {
+                // Use custom expertise, derive a generic goal or use parent's if cloning
+                assignedRole = {
+                     expertise: customExpertise,
+                     goal: parentCell ? parentCell.goal : `Utilize ${customExpertise.split(' ')[0]} expertise.`
+                 };
+            } else if (parentCell) {
+                 // Cloning without custom expertise: inherit from parent
+                 assignedRole = { expertise: parentCell.expertise, goal: parentCell.goal };
             } else {
+                // Adding new cell without parent or custom expertise: find the least represented role
                  const currentExpertiseCounts = Object.values(state.cells).reduce((acc, cell) => {
                      if (cell) {
                         acc[cell.expertise] = (acc[cell.expertise] || 0) + 1;
@@ -540,16 +527,18 @@ export const useNetworkStore = create(
                      const minCount = currentExpertiseCounts[minRole.expertise] || 0;
                      const currentCount = currentExpertiseCounts[currentRole.expertise] || 0;
                      return currentCount < minCount ? currentRole : minRole;
-                 }, predefinedRoles[0]);
+                 }, predefinedRoles[0]); // Default to first role if all counts are equal or list is empty
 
+                  // Fallback if predefinedRoles is empty or something went wrong
                   if (!assignedRole) {
-                     assignedRole = predefinedRoles[Object.keys(state.cells).length % predefinedRoles.length];
+                     assignedRole = { expertise: "Generic Worker", goal: "Perform general tasks" };
+                     console.warn("Could not determine least represented role, assigning Generic Worker.");
                   }
             }
 
             if (!assignedRole) {
                 console.error("Failed to assign a role to the new cell.");
-                return;
+                return; // Should not happen with the fallback logic above
             }
 
             const newCell: Cell = {
@@ -609,9 +598,10 @@ export const useNetworkStore = create(
       });
     },
 
-     sendMessage: async (sourceId, targetIdInput, content) => {
+     sendMessage: async (sourceIdInput, targetIdInput, content) => {
         const messageId = nanoid();
         const timestamp = Date.now();
+        const sourceId = sourceIdInput; // Use the input directly
         let route: CellId[] | undefined = undefined;
         let finalTargetId = targetIdInput; // Use input target initially
         let reasoning = "Direct message.";
@@ -665,7 +655,6 @@ export const useNetworkStore = create(
 
 
                 try {
-                    // Use targetIdInput directly from the function parameter
                     const input: RouteMessageInput = { message: content, targetCellId: targetIdInput as CellId, currentCellId: startCellId, cellExpertise, cellConnections, networkCondition: "Normal" };
                     console.log("Calling routeMessage with:", input);
                     const result: RouteMessageOutput = await routeMessage(input);
@@ -754,6 +743,9 @@ export const useNetworkStore = create(
                                 cell.status = 'active';
                                 cell.lastActiveTick = state.tickCount;
                                 _addHistoryEntry(cell, { type: 'status', text: `Woken up by broadcast from ${sourceId}.` });
+                             } else {
+                                // If already active, still update last active tick
+                                cell.lastActiveTick = state.tickCount;
                              }
                              if (cell.id !== sourceId) { // Don't deliver broadcast to self
                                 _addHistoryEntry(cell, { type: 'message', text: `Received broadcast from ${sourceId}: "${content.substring(0,30)}..."` });
@@ -777,11 +769,10 @@ export const useNetworkStore = create(
                     }
                 } else if (finalTargetId === 'user') {
                    console.log(`Message to User Interface from ${sourceId}: ${content}`);
+                   // Ensure message appears correctly in UI
                    const msgToUpdate = messagesToAdd.find(m => m.id === messageId && m.targetCellId === 'user');
-                   if (msgToUpdate && sourceId !== 'user') {
-                      msgToUpdate.sourceCellId = state.cells[sourceId] ? sourceId : 'unknown';
-                   } else if (msgToUpdate && sourceId === 'user') {
-                      msgToUpdate.sourceCellId = 'user';
+                   if (msgToUpdate) {
+                     msgToUpdate.sourceCellId = sourceId; // Let UI handle 'user' vs cell ID display
                    }
                 }
                  messagesToAdd.forEach(msg => state.messages.push(msg));
@@ -863,8 +854,12 @@ export const useNetworkStore = create(
 
                 if (result.relevantExpertise.length > 0) {
                     result.relevantExpertise.forEach(expert => {
+                        // Prepare the help message content
+                        const helpMessageContent = `Need help with: ${requestText}. AI suggested your expertise in '${expert.expertise}' might be relevant.`;
+
                         // Send message will handle waking the target if needed
-                        get().sendMessage(requestingCellId, expert.cellId, `Need help with: ${requestText}. Your expertise in '${expert.expertise}' might be relevant.`);
+                        // Use setTimeout to avoid potential race conditions with state updates
+                        setTimeout(() => get().sendMessage(requestingCellId, expert.cellId, helpMessageContent), 10);
 
                         // Update likedCells within a set callback
                         set(state => {
@@ -884,7 +879,7 @@ export const useNetworkStore = create(
                          if(cell) _addHistoryEntry(cell, { type: 'decision', text: `No specific expertise found nearby, broadcasting help request.` });
                      });
                      // Send broadcast message (will wake up all cells)
-                     get().sendMessage(requestingCellId, 'broadcast', `Help needed: ${requestText}`);
+                     setTimeout(() => get().sendMessage(requestingCellId, 'broadcast', `Help needed: ${requestText}`), 10);
                 }
 
             } catch (interpretError) {
@@ -893,7 +888,8 @@ export const useNetworkStore = create(
                      const cell = state.cells[requestingCellId];
                      if(cell) _addHistoryEntry(cell, { type: 'decision', text: `Error asking AI for help. Broadcasting request.` });
                 });
-                get().sendMessage(requestingCellId, 'broadcast', `Help needed: ${requestText}`);
+                // Send broadcast on error
+                setTimeout(() => get().sendMessage(requestingCellId, 'broadcast', `Help needed: ${requestText}`), 10);
                 throw new Error(`AI help interpretation failed: ${interpretError instanceof Error ? interpretError.message : String(interpretError)}`);
             }
         } catch (error) {
@@ -978,15 +974,17 @@ const handleMessageReceptionLogic = (
          const mutableTargetCell = draft.cells[targetCell.id]; // Get the cell from the draft
          if (!mutableTargetCell) return; // Should not happen if initial check passed, but safety first
 
+         const wasSleeping = mutableTargetCell.status === 'sleeping';
+
+         // Always update last active tick on receiving a message
+         mutableTargetCell.lastActiveTick = draft.tickCount;
+
          // Wake up the cell if it's sleeping
-         if (mutableTargetCell.status === 'sleeping') {
+         if (wasSleeping) {
              mutableTargetCell.status = 'active';
-             mutableTargetCell.lastActiveTick = draft.tickCount;
              _addHistoryEntry(mutableTargetCell, { type: 'status', text: `Woken up by message from ${sourceId}.` });
-         } else {
-             // If already active, still update last active tick
-             mutableTargetCell.lastActiveTick = draft.tickCount;
          }
+
 
          let responseToSend: { targetId: CellId | 'user' | 'self', content: string } | null = null;
 
@@ -997,13 +995,27 @@ const handleMessageReceptionLogic = (
              responseToSend = { targetId: sourceId, content: responseContent };
          }
          // --- Help Request Check (Wake up if relevant) ---
-         else if (content.startsWith('Need help with:') && sourceId !== mutableTargetCell.id) {
+         else if (content.startsWith('Need help with:') && sourceId !== mutableTargetCell.id && sourceId !== 'user' ) {
              const requestText = content.substring(content.indexOf(':')+1).trim();
-             const expertiseMentioned = content.substring(content.indexOf("'")+1, content.lastIndexOf("'"));
-             if (mutableTargetCell.expertise === expertiseMentioned) {
+             // Check if the help message specifically mentions this cell's expertise
+             const expertiseMentionRegex = /expertise in '([^']+)'/;
+             const match = content.match(expertiseMentionRegex);
+             const mentionedExpertise = match ? match[1] : null;
+
+             // Wake up and potentially respond if the mentioned expertise matches
+             if (mentionedExpertise && mutableTargetCell.expertise.toLowerCase() === mentionedExpertise.toLowerCase()) {
                   _addHistoryEntry(mutableTargetCell, { type: 'decision', text: `Received relevant help request from ${sourceId}. Considering.` });
-                  // Potential further action: decide if it *can* help based on goal/state
-                  // For now, just acknowledging is enough.
+                   // Decide if it can help based on status (must be active now) and goal
+                   if (mutableTargetCell.status === 'active' && mutableTargetCell.goal.includes(mutableTargetCell.expertise.split(" ")[0])) { // Simple check if goal aligns
+                         const helpResponse = `Cell ${mutableTargetCell.id}: Acknowledged help request re: ${mentionedExpertise}. I might be able to assist.`;
+                         responseToSend = { targetId: sourceId, content: helpResponse };
+                         _addHistoryEntry(mutableTargetCell, { type: 'message', text: `Offering help to ${sourceId}.` });
+                   } else {
+                        _addHistoryEntry(mutableTargetCell, { type: 'decision', text: `Cannot offer help to ${sourceId} currently (status: ${mutableTargetCell.status} / goal mismatch).` });
+                   }
+             } else if (!mentionedExpertise && wasSleeping) {
+                  // If woken up by a generic help request, just log it
+                   _addHistoryEntry(mutableTargetCell, { type: 'message', text: `Woken by generic help request from ${sourceId}.` });
              }
          }
          // --- Social Interaction ---
@@ -1040,7 +1052,10 @@ const handleMessageReceptionLogic = (
                         // Add history and send message in a separate set call or action
                          useNetworkStore.setState(innerDraft => { // Use setState for async update
                              const cell = innerDraft.cells[mutableTargetCell!.id];
-                             if(cell) _addHistoryEntry(cell, {type: 'decision', text: analysisResult});
+                             if(cell) {
+                                 _addHistoryEntry(cell, {type: 'decision', text: analysisResult});
+                                 cell.lastActiveTick = innerDraft.tickCount; // Analysis counts as activity
+                             }
                          });
                          useNetworkStore.getState().sendMessage(mutableTargetCell!.id, sourceId, `Analysis Result: ${analysisResult}`);
                   }, 1000 + Math.random() * 1000);
@@ -1058,6 +1073,7 @@ const handleMessageReceptionLogic = (
                             // Schedule message sending using the store's action
                            setTimeout(()=> useNetworkStore.getState().sendMessage(mutableTargetCell!.id, neighbor.id, `Task from ${sourceId}: ${taskDescription}`), 10);
                            routed = true;
+                            mutableTargetCell.lastActiveTick = draft.tickCount; // Routing counts as activity
                            break;
                        }
                    }
@@ -1065,10 +1081,20 @@ const handleMessageReceptionLogic = (
                         _addHistoryEntry(mutableTargetCell, { type: 'decision', text: `Could not find suitable *active* neighbor for task: "${taskDescription.substring(0,20)}...".` });
                    }
              }
+             // Add more role-specific logic here...
+              else if (mutableTargetCell.expertise.endsWith('Sensor') && content.toLowerCase().trim() === 'report status') {
+                   const sensorReading = Math.random() * 100; // Simulate sensor reading
+                   const report = `Sensor ${mutableTargetCell.id} (${mutableTargetCell.expertise}): Reading = ${sensorReading.toFixed(2)}`;
+                   _addHistoryEntry(mutableTargetCell, { type: 'message', text: `Reporting status to ${sourceId}: ${report}` });
+                   responseToSend = { targetId: sourceId, content: report };
+                   mutableTargetCell.lastActiveTick = draft.tickCount; // Reporting counts as activity
+              }
+
+
          } // End of active-only logic
 
 
-          // If a response needs to be sent immediately (like for 'purpose?')
+          // If a response needs to be sent immediately
           if (responseToSend) {
              const { targetId: responseTargetId, content: responseContent } = responseToSend;
              // Check if original source exists and is alive (read from draft)
@@ -1106,13 +1132,12 @@ const handleHopReception = (
         // Only process hop if target cell exists and is alive
         if (targetCell?.isAlive) {
             const wasSleeping = targetCell.status === 'sleeping';
+            // Always update last active tick when receiving a routed message
+            targetCell.lastActiveTick = state.tickCount;
             // Wake up the cell if it's sleeping
             if (wasSleeping) {
                 targetCell.status = 'active';
-                 targetCell.lastActiveTick = state.tickCount; // Update tick immediately
                  _addHistoryEntry(targetCell, { type: 'status', text: `Woken up by routed message from ${sourceCellId}.` });
-            } else {
-                 targetCell.lastActiveTick = state.tickCount; // Update if already active
             }
 
             _addHistoryEntry(targetCell, { type: 'message', text: `Received (route hop): "${content.substring(0, 20)}..." from ${sourceCellId}` });
@@ -1125,6 +1150,7 @@ const handleHopReception = (
         } else {
             console.warn(`Route hop target ${targetCellId} is dead/gone. Stopping message propagation.`);
             // Immediately signal stop if target is invalid
+             _addHistoryEntry(state.cells[sourceCellId], {type: 'decision', text: `Route stopped, target ${targetCellId} dead/gone.`})
             setStopPropagation(true);
         }
     });
