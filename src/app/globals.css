@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -96,8 +97,12 @@ body {
   @apply bg-secondary border-secondary-foreground hover:bg-accent hover:border-accent-foreground hover:text-accent-foreground cursor-pointer;
 }
 
+.cell-node-sleeping {
+  @apply bg-muted border-muted-foreground text-muted-foreground cursor-pointer opacity-60 hover:opacity-100 hover:bg-secondary; /* Style for sleeping cells */
+}
+
 .cell-node-dead {
-  @apply bg-muted border-muted-foreground text-muted-foreground cursor-not-allowed opacity-50;
+  @apply bg-destructive/30 border-destructive/50 text-destructive-foreground cursor-not-allowed opacity-40; /* Adjusted dead style */
 }
 
 .cell-node-selected {

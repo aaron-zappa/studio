@@ -9,6 +9,8 @@ export interface Cell {
   position: { x: number; y: number };
   positionHistory: { x: number; y: number }[]; // Added to track movement
   isAlive: boolean;
+  status: 'active' | 'sleeping'; // Added status property
+  lastActiveTick: number; // Added to track inactivity
   version: number; // Added version property
   likedCells: CellId[]; // Added likedCells property
   history: HistoryEntry[];
@@ -18,7 +20,7 @@ export interface Cell {
 
 // Data needed to create a history entry (age and timestamp are added automatically)
 export interface HistoryEntryData {
-    type: 'decision' | 'message' | 'clone' | 'death' | 'init';
+    type: 'decision' | 'message' | 'clone' | 'death' | 'init' | 'status'; // Added 'status' type
     text: string;
 }
 
@@ -44,3 +46,4 @@ export interface NetworkState {
   tickCount: number; // Added tick count for overall network time
   purpose: string; // Added network purpose
 }
+

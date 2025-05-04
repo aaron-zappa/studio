@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useCallback, memo, useEffect, useState } from 'react';
@@ -21,14 +22,22 @@ const CellNode: React.FC<CellNodeProps> = memo(({ data }) => {
     selectCell(data.id);
   };
 
-  // Prevent unnecessary re-renders if cell data hasn't changed relevant properties
-  // Note: React.memo does a shallow comparison. If history or db changes often,
-  // this might still re-render. Consider passing only necessary props if needed.
+  // Determine class based on alive status and active/sleeping status
+   let statusClass = '';
+   if (!data.isAlive) {
+     statusClass = 'cell-node-dead';
+   } else if (data.status === 'sleeping') {
+     statusClass = 'cell-node-sleeping';
+   } else {
+     statusClass = 'cell-node-alive'; // Active and alive
+   }
+
+
   return (
     <div
       className={cn(
         'cell-node',
-        data.isAlive ? 'cell-node-alive' : 'cell-node-dead',
+        statusClass, // Apply the determined status class
         isSelected && 'cell-node-selected'
       )}
       style={{
@@ -38,8 +47,8 @@ const CellNode: React.FC<CellNodeProps> = memo(({ data }) => {
         top: `${data.position.y - size / 2}px`, // Center the node
         position: 'absolute', // Position absolutely within the container
       }}
-      onClick={data.isAlive ? handleClick : undefined}
-      title={`Cell ${data.id}\nAge: ${data.age}\nExpertise: ${data.expertise}\nGoal: ${data.goal}\nStatus: ${data.isAlive ? 'Alive' : 'Dead'}`}
+      onClick={data.isAlive ? handleClick : undefined} // Allow clicking sleeping cells
+      title={`Cell ${data.id}\nAge: ${data.age}\nStatus: ${data.isAlive ? data.status : 'Dead'}\nExpertise: ${data.expertise}\nGoal: ${data.goal}`}
     >
       {data.id.substring(0, 2)} {/* Display first 2 chars of ID */}
     </div>
@@ -57,6 +66,7 @@ interface ConnectionLineProps {
 }
 
 const ConnectionLine: React.FC<ConnectionLineProps> = memo(({ source, target, isMessagePath, isLikedPath }) => {
+    // Only draw if both cells exist (could be dead or sleeping)
     if (!source || !target) return null;
 
     // Adjust endpoints slightly towards center based on size
@@ -80,6 +90,15 @@ const ConnectionLine: React.FC<ConnectionLineProps> = memo(({ source, target, is
     const x2 = target.position.x - targetOffsetX;
     const y2 = target.position.y - targetOffsetY;
 
+    // Style connection based on target status if it's not a message path
+     let connectionStyle = 'connection-line'; // Default
+     if (!isMessagePath) {
+       if (!target.isAlive || target.status === 'sleeping') {
+         connectionStyle += ' opacity-30'; // Dim connections to dead/sleeping cells
+       }
+     }
+
+
     return (
         <line
             x1={x1}
@@ -87,9 +106,11 @@ const ConnectionLine: React.FC<ConnectionLineProps> = memo(({ source, target, is
             x2={x2}
             y2={y2}
             className={cn(
-                'connection-line',
+                connectionStyle, // Use dynamic style
                 isMessagePath && 'message-path',
-                isLikedPath && 'stroke-primary opacity-50' // Style for liked connections
+                isLikedPath && !isMessagePath && 'stroke-primary opacity-50', // Liked path only if not message path
+                 // Dim liked path if target is sleeping/dead and not a message
+                 isLikedPath && (!target.isAlive || target.status === 'sleeping') && !isMessagePath && 'opacity-20'
             )}
             markerEnd={isMessagePath ? "url(#arrow)" : undefined}
         />
@@ -126,10 +147,9 @@ export const NetworkVisualization: React.FC = () => {
     const messages = useNetworkStore((state) => state.messages);
     const getCellById = useNetworkStore((state) => state.getCellById);
 
-    // Optimization: Use versions to trigger re-renders only when necessary cell data changes
-    // This creates a dependency array based on cell versions and positions
+    // Optimization: Include status in dependencies
     const cellDependencies = useMemo(() => {
-        return cells.map(c => `${c.id}-${c.version}-${c.position.x}-${c.position.y}-${c.isAlive}-${c.age}-${c.positionHistory.length}`).join(',');
+        return cells.map(c => `${c.id}-${c.version}-${c.position.x}-${c.position.y}-${c.isAlive}-${c.status}-${c.age}-${c.positionHistory.length}`).join(',');
     }, [cells]);
 
     const messageDependencies = useMemo(() => {
@@ -147,7 +167,8 @@ export const NetworkVisualization: React.FC = () => {
      const movementTrails = useMemo(() => {
         console.log("Recalculating movement trails...");
         return cells
-            .filter(cell => cell.isAlive && cell.positionHistory && cell.positionHistory.length > 1)
+            // Only show trails for alive AND active cells
+            .filter(cell => cell.isAlive && cell.status === 'active' && cell.positionHistory && cell.positionHistory.length > 1)
             .map(cell => (
                 <MovementTrail key={`trail-${cell.id}`} positions={cell.positionHistory} />
             ));
@@ -161,11 +182,11 @@ export const NetworkVisualization: React.FC = () => {
 
         // --- Liked Connections ---
         cells.forEach(sourceCell => {
+            // Only draw likes from alive cells (can like sleeping/dead cells)
             if (!sourceCell.isAlive) return;
             sourceCell.likedCells.forEach(targetId => {
                 const targetCell = getCellById(targetId);
-                if (targetCell && targetCell.isAlive) {
-                    // Ensure edge uniqueness (e.g., "A-B" is the same as "B-A")
+                if (targetCell) { // Draw connection even if target is dead/sleeping
                     const edgeId = [sourceCell.id, targetId].sort().join('-');
                     if (!drawnEdges.has(edgeId)) {
                         edgeElements.push(
@@ -188,24 +209,13 @@ export const NetworkVisualization: React.FC = () => {
             const sourceCell = msg.sourceCellId !== 'user' ? getCellById(msg.sourceCellId) : null;
             let targets: Cell[] = [];
 
-            if (msg.targetCellId === 'broadcast') {
-                // For broadcast, draw lines from source to all other alive cells
-                if (sourceCell) {
-                     targets = cells.filter(c => c.isAlive && c.id !== sourceCell.id);
-                }
-            } else if (msg.targetCellId !== 'user') {
-                const targetCell = getCellById(msg.targetCellId);
-                if (targetCell && targetCell.isAlive) {
-                     targets.push(targetCell);
-                }
-            }
-
             // Handle routes if available
             if (msg.route && msg.route.length > 1) {
                 for (let i = 0; i < msg.route.length - 1; i++) {
                     const routeSource = getCellById(msg.route[i]);
                     const routeTarget = getCellById(msg.route[i + 1]);
-                    if (routeSource && routeTarget && routeSource.isAlive && routeTarget.isAlive) {
+                    // Draw route hop if both source and target exist (target could be sleeping/dead but was intended)
+                    if (routeSource && routeTarget) {
                          edgeElements.push(
                             <ConnectionLine
                                 key={`${msg.id}-route-${i}`}
@@ -214,22 +224,63 @@ export const NetworkVisualization: React.FC = () => {
                                 isMessagePath={true}
                             />
                         );
+                    } else {
+                         console.warn(`Skipping route segment draw: ${routeSource?.id} -> ${routeTarget?.id} (one or both missing)`);
                     }
                 }
-            } else if (sourceCell) {
-                // Fallback to direct source-target lines if no route
-                targets.forEach(targetCell => {
-                    edgeElements.push(
-                        <ConnectionLine
-                            key={`${msg.id}-${sourceCell.id}-${targetCell.id}`}
-                            source={sourceCell}
-                            target={targetCell}
-                            isMessagePath={true}
-                        />
-                    );
-                });
             }
+            // Handle direct/broadcast if NO route was successfully drawn/intended
+            else {
+                if (msg.targetCellId === 'broadcast') {
+                    // Broadcast only comes FROM an active cell (or user)
+                    if (sourceCell?.isAlive && sourceCell.status === 'active') {
+                         // Broadcast goes TO all other alive cells (active or sleeping)
+                         targets = cells.filter(c => c.isAlive && c.id !== sourceCell.id);
+                    } else if (msg.sourceCellId === 'user') {
+                        // User broadcast goes to all alive cells
+                        targets = cells.filter(c => c.isAlive);
+                    }
+                } else if (msg.targetCellId !== 'user') {
+                    const targetCell = getCellById(msg.targetCellId);
+                    // Can target a sleeping/dead cell directly
+                    if (targetCell) {
+                         targets.push(targetCell);
+                    }
+                }
 
+                // Draw direct lines if source exists (even if sleeping/dead, maybe it sent right before dying?)
+                if (sourceCell) {
+                    targets.forEach(targetCell => {
+                        // Ensure target still exists before drawing
+                        if(getCellById(targetCell.id)) {
+                            edgeElements.push(
+                                <ConnectionLine
+                                    key={`${msg.id}-${sourceCell.id}-${targetCell.id}`}
+                                    source={sourceCell}
+                                    target={targetCell}
+                                    isMessagePath={true}
+                                />
+                            );
+                        }
+                    });
+                } else if (msg.sourceCellId === 'user') {
+                     // Draw from a nominal "user" position (e.g., corner) if source is user
+                     const userPosition = { x: 10, y: 10 }; // Example user position
+                     const pseudoUserCell: Partial<Cell> = { id: 'user', position: userPosition, age: 0 };
+                     targets.forEach(targetCell => {
+                        if (getCellById(targetCell.id)) {
+                             edgeElements.push(
+                                <ConnectionLine
+                                    key={`${msg.id}-user-${targetCell.id}`}
+                                    source={pseudoUserCell as Cell} // Cast needed
+                                    target={targetCell}
+                                    isMessagePath={true}
+                                />
+                            );
+                        }
+                     });
+                }
+            }
         });
 
         return edgeElements;
@@ -263,3 +314,4 @@ export const NetworkVisualization: React.FC = () => {
     </div>
   );
 };
+

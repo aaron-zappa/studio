@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -14,7 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { startAutoTick, stopAutoTick } from '@/hooks/useNetworkStore';
 import { Slider } from '@/components/ui/slider';
-import { AlertCircle, Bot, BrainCircuit, Clock, HelpCircle, MessageSquare, Plus, Send, Trash2, Zap, Milestone, ListTree, Target, History, User, RefreshCw } from 'lucide-react';
+import { AlertCircle, Bot, BrainCircuit, Clock, HelpCircle, MessageSquare, Plus, Send, Trash2, Zap, Milestone, ListTree, Target, History, User, RefreshCw, BedDouble } from 'lucide-react'; // Added BedDouble
 import {
   Sidebar,
   SidebarContent,
@@ -130,8 +131,8 @@ export const ControlPanel: React.FC = () => {
   };
 
   const handleAskForHelp = async () => {
-    if (!selectedCellId || !helpRequestText.trim()) {
-        toast({ title: "Error", description: "Select a cell and enter help request.", variant: "destructive" });
+    if (!selectedCellId || !helpRequestText.trim() || selectedCell?.status !== 'active') {
+        toast({ title: "Error", description: "Select an active cell and enter help request.", variant: "destructive" });
         return;
     };
     setIsAskingForHelp(true);
@@ -187,13 +188,22 @@ export const ControlPanel: React.FC = () => {
   };
 
   const handleCloneCell = () => {
-      if(selectedCellId) {
+      if(selectedCellId && selectedCell?.status === 'active') {
           addCell(selectedCellId);
            toast({ title: "Cell Cloned", description: `Created clone of Cell ${selectedCellId.substring(0,6)}.` });
       } else {
-          toast({ title: "Error", description: "No cell selected to clone.", variant: "destructive" });
+          toast({ title: "Error", description: "Select an active cell to clone.", variant: "destructive" });
       }
   }
+
+   const getStatusBadgeVariant = (status: 'active' | 'sleeping' | 'dead') => {
+       switch (status) {
+           case 'active': return 'secondary';
+           case 'sleeping': return 'outline';
+           case 'dead': return 'destructive';
+           default: return 'default';
+       }
+   }
 
   return (
     <>
@@ -277,12 +287,12 @@ export const ControlPanel: React.FC = () => {
                       <CardHeader className="p-4">
                         <CardTitle className="flex items-center justify-between text-lg">
                             Cell Details
-                            <Badge variant={selectedCell.isAlive ? "secondary" : "destructive"} className="cursor-pointer" onClick={() => selectCell(selectedCell.id)}>
+                            <Badge variant={getStatusBadgeVariant(selectedCell.isAlive ? selectedCell.status : 'dead')} className="cursor-pointer capitalize" onClick={() => selectCell(selectedCell.id)}>
                                 {selectedCell.id.substring(0, 6)}...
                             </Badge>
                         </CardTitle>
-                         <CardDescription>
-                            Status: {selectedCell.isAlive ? `Alive (Age: ${selectedCell.age})` : `Dead (Died at Age: ${selectedCell.age})`} | Version: {selectedCell.version}
+                         <CardDescription className="capitalize">
+                            Status: {selectedCell.isAlive ? selectedCell.status : `Dead (Age: ${selectedCell.age})`} {selectedCell.isAlive && `(Age: ${selectedCell.age})`} | Version: {selectedCell.version}
                          </CardDescription>
                       </CardHeader>
                       <CardContent className="p-4 space-y-3 text-sm">
@@ -295,19 +305,19 @@ export const ControlPanel: React.FC = () => {
                         <Label htmlFor="help-request">Ask Neighbors for Help:</Label>
                         <Textarea
                             id="help-request"
-                            placeholder="Describe what this cell needs help with..."
+                            placeholder={selectedCell.status !== 'active' ? 'Cell must be active to ask for help.' : "Describe what this cell needs help with..."}
                             value={helpRequestText}
                             onChange={(e) => setHelpRequestText(e.target.value)}
                             className="h-20"
-                            disabled={!selectedCell.isAlive || isAskingForHelp}
+                            disabled={!selectedCell.isAlive || selectedCell.status !== 'active' || isAskingForHelp}
                         />
-                        <Button onClick={handleAskForHelp} size="sm" className="w-full" disabled={!selectedCell.isAlive || isAskingForHelp}>
+                        <Button onClick={handleAskForHelp} size="sm" className="w-full" disabled={!selectedCell.isAlive || selectedCell.status !== 'active' || isAskingForHelp}>
                              {isAskingForHelp && <RefreshCw className="mr-2 size-4 animate-spin" />}
                             <HelpCircle className="mr-2 size-4" /> Ask for Help
                         </Button>
                         <Separator className="my-3" />
                          <div className="flex gap-2">
-                            <Button onClick={handleCloneCell} size="sm" variant="outline" className="flex-1" disabled={!selectedCell.isAlive}>
+                            <Button onClick={handleCloneCell} size="sm" variant="outline" className="flex-1" disabled={!selectedCell.isAlive || selectedCell.status !== 'active'}>
                                 <Plus className="mr-2 size-4" /> Clone
                             </Button>
                             <Button onClick={handleRemoveCell} size="sm" variant="destructive" className="flex-1">
@@ -322,7 +332,7 @@ export const ControlPanel: React.FC = () => {
                          <ScrollArea className="h-40 w-full rounded-md border p-2 text-xs bg-muted/30">
                             {selectedCell.history.length === 0 && <p className="text-muted-foreground italic">No history yet.</p>}
                              {selectedCell.history.slice().reverse().map(entry => ( // Reverse for newest first
-                                 <div key={entry.seq} className="mb-1.5 leading-relaxed"> {/* Changed p to div */}
+                                 <div key={entry.seq} className="mb-1.5 leading-relaxed">
                                      <span className="text-muted-foreground mr-1">[{entry.age}]</span>
                                      <Badge variant="outline" className="mr-1.5 text-[10px] capitalize px-1.5 py-0 align-middle">{entry.type}</Badge>
                                       {entry.text}
@@ -355,13 +365,20 @@ export const ControlPanel: React.FC = () => {
                         >
                             <option value="broadcast">Broadcast to All</option>
                             <option value="user">To User Interface (Debug)</option>
-                            <optgroup label="Alive Cells">
-                                {Object.values(cells).filter(c => c?.isAlive).map(cell => ( // Add null check
-                                    <option key={cell.id} value={cell.id}>
-                                        Cell {cell.id.substring(0, 6)} ({cell.expertise})
+                             <optgroup label="Active Cells">
+                                {Object.values(cells).filter(c => c?.isAlive && c.status === 'active').sort((a,b) => a!.id.localeCompare(b!.id)).map(cell => (
+                                    <option key={cell!.id} value={cell!.id}>
+                                        Cell {cell!.id.substring(0, 6)} ({cell!.expertise})
                                     </option>
                                 ))}
                             </optgroup>
+                             <optgroup label="Sleeping Cells">
+                                {Object.values(cells).filter(c => c?.isAlive && c.status === 'sleeping').sort((a,b) => a!.id.localeCompare(b!.id)).map(cell => (
+                                    <option key={cell!.id} value={cell!.id}>
+                                        Cell {cell!.id.substring(0, 6)} (Sleeping)
+                                    </option>
+                                ))}
+                             </optgroup>
                             <optgroup label="Dead Cells (Inspect Only)">
                                 {Object.values(cells).filter(c => c && !c.isAlive).sort((a,b) => a.id.localeCompare(b.id)).map(cell => ( // Add null check
                                      <option key={cell.id} value={cell.id} disabled>
