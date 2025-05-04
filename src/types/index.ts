@@ -1,4 +1,5 @@
 
+
 export type CellId = string;
 
 export interface Cell {
@@ -14,13 +15,14 @@ export interface Cell {
   version: number; // Added version property
   likedCells: CellId[]; // Added likedCells property
   history: HistoryEntry[];
+  indicatorColor?: string; // Added optional color for indicator dot
   db?: any; // Placeholder for in-memory DB, adjust as needed
   dbFilePath?: string; // Path to persisted SQLite file
 }
 
 // Data needed to create a history entry (age and timestamp are added automatically)
 export interface HistoryEntryData {
-    type: 'decision' | 'message' | 'clone' | 'death' | 'init' | 'status'; // Added 'status' type
+    type: 'decision' | 'message' | 'clone' | 'death' | 'init' | 'status' | 'config'; // Added 'config' type
     text: string;
 }
 
@@ -46,4 +48,5 @@ export interface NetworkState {
   tickCount: number; // Added tick count for overall network time
   purpose: string; // Added network purpose
 }
+
 

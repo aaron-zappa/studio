@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useCallback, memo, useEffect, useState } from 'react';
@@ -36,7 +37,7 @@ const CellNode: React.FC<CellNodeProps> = memo(({ data }) => {
   return (
     <div
       className={cn(
-        'cell-node',
+        'cell-node relative', // Added relative positioning
         statusClass, // Apply the determined status class
         isSelected && 'cell-node-selected'
       )}
@@ -51,6 +52,14 @@ const CellNode: React.FC<CellNodeProps> = memo(({ data }) => {
       title={`Cell ${data.id}\nAge: ${data.age}\nStatus: ${data.isAlive ? data.status : 'Dead'}\nExpertise: ${data.expertise}\nGoal: ${data.goal}`}
     >
       {data.id.substring(0, 2)} {/* Display first 2 chars of ID */}
+       {/* Indicator Dot */}
+       {data.indicatorColor && (
+          <div
+            className="absolute top-0 right-0 w-2 h-2 rounded-full border border-background"
+            style={{ backgroundColor: data.indicatorColor, transform: 'translate(30%, -30%)' }} // Position outside slightly
+            title={`Indicator: ${data.indicatorColor}`}
+          />
+        )}
     </div>
   );
 });
@@ -147,10 +156,11 @@ export const NetworkVisualization: React.FC = () => {
     const messages = useNetworkStore((state) => state.messages);
     const getCellById = useNetworkStore((state) => state.getCellById);
 
-    // Optimization: Include status in dependencies
+    // Optimization: Include status and indicator color in dependencies
     const cellDependencies = useMemo(() => {
-        return cells.map(c => `${c.id}-${c.version}-${c.position.x}-${c.position.y}-${c.isAlive}-${c.status}-${c.age}-${c.positionHistory.length}`).join(',');
+        return cells.map(c => `${c.id}-${c.version}-${c.position.x}-${c.position.y}-${c.isAlive}-${c.status}-${c.age}-${c.positionHistory.length}-${c.indicatorColor}`).join(',');
     }, [cells]);
+
 
     const messageDependencies = useMemo(() => {
         return messages.map(m => m.id).join(',');
@@ -162,7 +172,7 @@ export const NetworkVisualization: React.FC = () => {
           <CellNode key={cell.id} data={cell} />
         ));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [cellDependencies]); // Re-render only when cell versions/positions/status/age change
+    }, [cellDependencies]); // Re-render only when cell versions/positions/status/age/indicator change
 
      const movementTrails = useMemo(() => {
         console.log("Recalculating movement trails...");
@@ -314,4 +324,5 @@ export const NetworkVisualization: React.FC = () => {
     </div>
   );
 };
+
 

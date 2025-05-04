@@ -1,6 +1,7 @@
 
 
 
+
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { NetworkState, Cell, CellId, Message, HistoryEntry, HistoryEntryData } from '@/types';
@@ -26,12 +27,13 @@ const MAX_AGE = 99;
 const MAX_CELLS = 100; // Limit the number of cells for performance
 const GRID_SIZE = 500; // Size of the visualization area
 const CLONE_DISTANCE_THRESHOLD = 50; // Min distance between parent and clone
-const MOVE_STEP = 100; // Increased movement step for more noticeable movement
-const POSITION_HISTORY_LIMIT = 25; // Increased history limit for longer trails
+const MOVE_STEP = 150; // Increased movement step for more noticeable movement
+const POSITION_HISTORY_LIMIT = 30; // Increased history limit for longer trails
 const MAX_HISTORY = 100; // Max history entries per cell
 const SLEEP_THRESHOLD = 50; // Ticks of inactivity before sleeping
 const SLEEP_CHANCE_ON_TICK = 0.05; // 5% chance per tick to consider sleeping if inactive
 const RANDOM_WAKE_CHANCE = 0.01; // Small chance for a sleeping cell to wake randomly
+const MIN_DISTANCE_BETWEEN_CELLS = 20; // Increased min distance
 
 // --- Helper Functions ---
 
@@ -176,7 +178,7 @@ const getClonedPosition = (parentPos: { x: number; y: number }, existingPosition
         let tooClose = false;
         for (const pos of existingPositions) {
             const dist = Math.sqrt(Math.pow(pos.x - clampedX, 2) + Math.pow(pos.y - clampedY, 2));
-            if (dist < CLONE_DISTANCE_THRESHOLD / 2) { // Don't overlap too much
+            if (dist < MIN_DISTANCE_BETWEEN_CELLS) { // Use new min distance
                 tooClose = true;
                 break;
             }
@@ -272,7 +274,7 @@ export const useNetworkStore = create(
         state.selectedCellId = null;
         const initialPositions: { x: number; y: number }[] = [];
         // Use the smaller of the requested count, MAX_CELLS, or available predefined roles
-        const numCells = Math.min(count, MAX_CELLS, predefinedRoles.length);
+        const numCells = Math.min(count, MAX_CELLS);
 
         for (let i = 0; i < numCells; i++) {
           const id = nanoid(8);
@@ -371,13 +373,21 @@ export const useNetworkStore = create(
           }
 
           // --- Active Cell Logic ---
-          // cell.lastActiveTick = state.tickCount; // Update last active tick only when truly active (e.g., receiving/sending message, specific actions) - Moved to relevant places
-
            // Check for sleeping condition based on inactivity and chance
            if (state.tickCount - cell.lastActiveTick > SLEEP_THRESHOLD && Math.random() < SLEEP_CHANCE_ON_TICK) {
-                cell.status = 'sleeping';
-                _addHistoryEntry(cell, { type: 'status', text: `Entering sleep due to inactivity.` });
-                return; // Stop active processing for this tick
+                // Check if the cell has a reason to stay awake (e.g., waiting for a response)
+                const recentMessages = cell.history.slice(-5); // Check recent history
+                const isWaiting = recentMessages.some(h => h.type === 'message' && h.text.startsWith('Sent') && !recentMessages.some(rh => rh.type === 'message' && rh.text.startsWith('Received from')));
+                const needsHelp = recentMessages.some(h => h.type === 'message' && h.text.startsWith('Asking neighbors for help') && !recentMessages.some(rh => rh.type === 'message' && rh.text.startsWith('Offering help to')));
+
+                if (!isWaiting && !needsHelp) {
+                    cell.status = 'sleeping';
+                    _addHistoryEntry(cell, { type: 'status', text: `Entering sleep due to inactivity.` });
+                    return; // Stop active processing for this tick
+                } else {
+                     _addHistoryEntry(cell, { type: 'decision', text: `Staying awake despite inactivity (waiting=${isWaiting}, needsHelp=${needsHelp}).` });
+                     cell.lastActiveTick = state.tickCount; // Reset timer if deciding to stay awake
+                }
            }
 
 
@@ -509,7 +519,7 @@ export const useNetworkStore = create(
                 // Use custom expertise, derive a generic goal or use parent's if cloning
                 assignedRole = {
                      expertise: customExpertise,
-                     goal: parentCell ? parentCell.goal : `Utilize ${customExpertise.split(' ')[0]} expertise.`
+                     goal: parentCell ? parentCell.goal : `Utilize ${customExpertise.split(' ')[0]} expertise effectively.`
                  };
             } else if (parentCell) {
                  // Cloning without custom expertise: inherit from parent
@@ -655,7 +665,7 @@ export const useNetworkStore = create(
 
 
                 try {
-                    const input: RouteMessageInput = { message: content, targetCellId: targetIdInput as CellId, currentCellId: startCellId, cellExpertise, cellConnections, networkCondition: "Normal" };
+                    const input: RouteMessageInput = { message: content, targetCellId: targetIdInput, currentCellId: startCellId, cellExpertise, cellConnections, networkCondition: "Normal" };
                     console.log("Calling routeMessage with:", input);
                     const result: RouteMessageOutput = await routeMessage(input);
                     console.log("routeMessage result:", result);
@@ -683,7 +693,7 @@ export const useNetworkStore = create(
                             queueMessage({ id: messageId, sourceCellId: sourceId, targetCellId: finalDestination, content, timestamp, route });
                             set(state => {
                                 if (sourceId !== 'user' && state.cells[sourceId]) {
-                                    _addHistoryEntry(state.cells[sourceId], { type: 'message', text: `Sent (via route): "${content.substring(0,30)}..." towards ${finalDestination}. AI Reason: ${reasoning.substring(0, 50)}` });
+                                    _addHistoryEntry(state.cells[sourceId]!, { type: 'message', text: `Sent (via route): "${content.substring(0,30)}..." towards ${finalDestination}. AI Reason: ${reasoning.substring(0, 50)}` });
                                     // Reset sender's inactivity timer
                                     state.cells[sourceId]!.status = 'active';
                                     state.cells[sourceId]!.lastActiveTick = state.tickCount;
@@ -728,7 +738,7 @@ export const useNetworkStore = create(
             set(state => {
                 // Add history entry for the sender (if not user) and reset activity timer
                 if (sourceId !== 'user' && state.cells[sourceId]) {
-                    _addHistoryEntry(state.cells[sourceId], { type: 'message', text: `Sent: "${content.substring(0,30)}..." to ${finalTargetId}. Reason: ${reasoning.substring(0,50)}` });
+                    _addHistoryEntry(state.cells[sourceId]!, { type: 'message', text: `Sent: "${content.substring(0,30)}..." to ${finalTargetId}. Reason: ${reasoning.substring(0,50)}` });
                     state.cells[sourceId]!.status = 'active';
                     state.cells[sourceId]!.lastActiveTick = state.tickCount;
                 }
@@ -736,8 +746,16 @@ export const useNetworkStore = create(
                 // Handle reception based on target
                 if (finalTargetId === 'broadcast') {
                     Object.values(state.cells).forEach(cell => {
-                        // Broadcast wakes up ALL alive cells
-                        if (cell?.isAlive) {
+                        if (!cell) return; // Skip undefined cells
+                        // Check for special command before general broadcast logic
+                        if (content.toLowerCase().trim() === 'color all sensors green' && cell.expertise.endsWith('Sensor') && cell.isAlive) {
+                            cell.indicatorColor = 'green';
+                            _addHistoryEntry(cell, { type: 'config', text: `Indicator set to green by broadcast.` });
+                        } else if (content.toLowerCase().trim() === 'reset sensor color' && cell.expertise.endsWith('Sensor') && cell.isAlive) {
+                            delete cell.indicatorColor; // Remove the color property
+                            _addHistoryEntry(cell, { type: 'config', text: `Indicator color reset by broadcast.` });
+                        } else if (cell.isAlive) {
+                            // Standard broadcast logic
                              // Wake up if sleeping
                              if (cell.status === 'sleeping') {
                                 cell.status = 'active';
@@ -764,7 +782,7 @@ export const useNetworkStore = create(
                         if (sourceId === 'user') {
                             queueMessage({ id: nanoid(), sourceCellId: 'user', targetCellId: 'user', content: `Error: Target cell ${finalTargetId.substring(0,6)} is not responding (dead).`, timestamp: Date.now() });
                         } else if (state.cells[sourceId]) {
-                            _addHistoryEntry(state.cells[sourceId], { type: 'decision', text: `Message to ${finalTargetId} failed (target dead).` });
+                            _addHistoryEntry(state.cells[sourceId]!, { type: 'decision', text: `Message to ${finalTargetId} failed (target dead).` });
                         }
                     }
                 } else if (finalTargetId === 'user') {
@@ -988,6 +1006,21 @@ const handleMessageReceptionLogic = (
 
          let responseToSend: { targetId: CellId | 'user' | 'self', content: string } | null = null;
 
+          // --- Special Color Command Handling (Overrides other logic if matched) ---
+          const lowerContentTrimmed = content.toLowerCase().trim();
+          if (lowerContentTrimmed === 'color all sensors green' && mutableTargetCell.expertise.endsWith('Sensor')) {
+              mutableTargetCell.indicatorColor = 'green';
+              _addHistoryEntry(mutableTargetCell, { type: 'config', text: `Indicator set to green by ${sourceId}.` });
+              // Don't process further standard logic for this specific message
+              return;
+          }
+           if (lowerContentTrimmed === 'reset sensor color' && mutableTargetCell.expertise.endsWith('Sensor')) {
+              delete mutableTargetCell.indicatorColor; // Remove the color property
+              _addHistoryEntry(mutableTargetCell, { type: 'config', text: `Indicator color reset by ${sourceId}.` });
+              return; // Don't process further standard logic
+          }
+
+
          // --- Purpose Query ---
          if (content.toLowerCase().trim() === 'purpose?') {
              const responseContent = `My Purpose: ${mutableTargetCell.goal}. My Expertise: ${mutableTargetCell.expertise}. (Age: ${mutableTargetCell.age}, Status: ${mutableTargetCell.status})`;
@@ -1150,7 +1183,9 @@ const handleHopReception = (
         } else {
             console.warn(`Route hop target ${targetCellId} is dead/gone. Stopping message propagation.`);
             // Immediately signal stop if target is invalid
-             _addHistoryEntry(state.cells[sourceCellId], {type: 'decision', text: `Route stopped, target ${targetCellId} dead/gone.`})
+            if (state.cells[sourceCellId]) { // Check if source still exists before adding history
+                _addHistoryEntry(state.cells[sourceCellId]!, {type: 'decision', text: `Route stopped, target ${targetCellId} dead/gone.`})
+            }
             setStopPropagation(true);
         }
     });
@@ -1198,3 +1233,4 @@ if (typeof window !== 'undefined') {
 if (typeof window !== 'undefined') {
     window.addEventListener('beforeunload', stopAutoTick);
 }
+

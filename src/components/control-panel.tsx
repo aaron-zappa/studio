@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -15,7 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { startAutoTick, stopAutoTick } from '@/hooks/useNetworkStore';
 import { Slider } from '@/components/ui/slider';
-import { AlertCircle, Bot, BrainCircuit, Clock, HelpCircle, MessageSquare, Plus, Send, Trash2, Zap, Milestone, ListTree, Target, History, User, RefreshCw, BedDouble, ScanLine, Thermometer, BarChart, Waves, Wind, Lightbulb, Droplet, Rss, Eye, Ear } from 'lucide-react'; // Added Sensor Icons
+import { AlertCircle, Bot, BrainCircuit, Clock, HelpCircle, MessageSquare, Plus, Send, Trash2, Zap, Milestone, ListTree, Target, History, User, RefreshCw, BedDouble, ScanLine, Thermometer, BarChart, Waves, Wind, Lightbulb, Droplet, Rss, Eye, Ear, Paintbrush } from 'lucide-react'; // Added Sensor Icons & Paintbrush
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Added Select
 import {
   Sidebar,
@@ -132,8 +133,9 @@ export const ControlPanel: React.FC = () => {
   };
 
 
-  const handleSendMessage = async () => {
-    if (!messageContent.trim()) {
+  const handleSendMessage = async (overrideContent?: string) => {
+    const contentToSend = overrideContent ?? messageContent;
+    if (!contentToSend.trim()) {
         toast({ title: "Error", description: "Message cannot be empty.", variant: "destructive" });
         return;
     };
@@ -143,9 +145,11 @@ export const ControlPanel: React.FC = () => {
 
     // Simplified logic: Control panel always sends from 'user'
     try {
-        await sendMessage(source, target, messageContent);
+        await sendMessage(source, target, contentToSend);
         toast({ title: "Message Sent", description: `To: ${target === 'broadcast' ? 'All Cells' : (target === 'user' ? 'User Interface' : `Cell ${target.substring(0,6)}...`)}` });
-        setMessageContent(''); // Clear input after successful send
+        if (!overrideContent) {
+             setMessageContent(''); // Clear input only if not using override content
+        }
     } catch (error) {
         console.error("Failed to send message:", error);
         const errorMessage = error instanceof Error ? error.message : "Could not send message.";
@@ -250,6 +254,17 @@ export const ControlPanel: React.FC = () => {
        }
    }
 
+   const handleColorSensorsGreen = () => {
+        handleSendMessage("color all sensors green");
+        toast({ title: "Command Sent", description: "Instructed sensors to turn green." });
+   };
+
+   const handleResetSensorColors = () => {
+       handleSendMessage("reset sensor color");
+       toast({ title: "Command Sent", description: "Instructed sensors to reset color." });
+   };
+
+
   return (
     <>
         <SidebarHeader className="p-2 flex items-center justify-between">
@@ -294,7 +309,7 @@ export const ControlPanel: React.FC = () => {
                     <Slider
                       id="network-size"
                       min={1}
-                      max={100} // Allow up to 100 cells
+                      max={MAX_CELLS} // Use constant
                       step={1}
                       value={[networkSize]}
                       onValueChange={(value) => setNetworkSize(value[0])}
@@ -407,7 +422,7 @@ export const ControlPanel: React.FC = () => {
                                  <div key={entry.seq} className="mb-1.5 leading-relaxed">
                                      <span className="text-muted-foreground mr-1">[{entry.age}]</span>
                                      <Badge variant="outline" className="mr-1.5 text-[10px] capitalize px-1.5 py-0 align-middle">{entry.type}</Badge>
-                                      {entry.text}
+                                      <span className="break-words">{entry.text}</span> {/* Ensure text wraps */}
                                  </div>
                              ))}
                          </ScrollArea>
@@ -471,10 +486,23 @@ export const ControlPanel: React.FC = () => {
                        disabled={isSendingMessage}
                      />
                     </div>
-                   <Button onClick={handleSendMessage} size="sm" className="w-full" disabled={isSendingMessage}>
+                   <Button onClick={() => handleSendMessage()} size="sm" className="w-full" disabled={isSendingMessage}>
                      {isSendingMessage && <RefreshCw className="mr-2 size-4 animate-spin" />}
                      <Send className="mr-2 size-4" /> Send Message
                    </Button>
+                    <Separator />
+                     {/* Sensor Color Buttons */}
+                    <div className="space-y-2">
+                        <Label>Sensor Commands (Broadcast Only)</Label>
+                        <div className="flex gap-2">
+                             <Button onClick={handleColorSensorsGreen} size="sm" variant="outline" className="flex-1" disabled={isSendingMessage}>
+                                 <Paintbrush className="mr-2 size-4" /> Color Sensors Green
+                             </Button>
+                             <Button onClick={handleResetSensorColors} size="sm" variant="outline" className="flex-1" disabled={isSendingMessage}>
+                                <RefreshCw className="mr-2 size-4" /> Reset Sensor Colors
+                            </Button>
+                        </div>
+                    </div>
                  </AccordionContent>
                </AccordionItem>
 
