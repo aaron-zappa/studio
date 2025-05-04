@@ -322,11 +322,11 @@ export const ControlPanel: React.FC = () => {
                          <ScrollArea className="h-40 w-full rounded-md border p-2 text-xs bg-muted/30">
                             {selectedCell.history.length === 0 && <p className="text-muted-foreground italic">No history yet.</p>}
                              {selectedCell.history.slice().reverse().map(entry => ( // Reverse for newest first
-                                 <p key={entry.seq} className="mb-1.5 leading-relaxed">
+                                 <div key={entry.seq} className="mb-1.5 leading-relaxed"> {/* Changed p to div */}
                                      <span className="text-muted-foreground mr-1">[{entry.age}]</span>
                                      <Badge variant="outline" className="mr-1.5 text-[10px] capitalize px-1.5 py-0 align-middle">{entry.type}</Badge>
                                       {entry.text}
-                                 </p>
+                                 </div>
                              ))}
                          </ScrollArea>
                       </CardContent>
@@ -356,7 +356,7 @@ export const ControlPanel: React.FC = () => {
                             <option value="broadcast">Broadcast to All</option>
                             <option value="user">To User Interface (Debug)</option>
                             <optgroup label="Alive Cells">
-                                {Object.values(cells).filter(c => c && c.isAlive).sort((a,b) => a.id.localeCompare(b.id)).map(cell => ( // Add null check
+                                {Object.values(cells).filter(c => c?.isAlive).map(cell => ( // Add null check
                                     <option key={cell.id} value={cell.id}>
                                         Cell {cell.id.substring(0, 6)} ({cell.expertise})
                                     </option>
@@ -396,106 +396,3 @@ export const ControlPanel: React.FC = () => {
     </>
   );
 };
-
-
-// Helper for predefined roles length used in Slider max
-const predefinedRoles = [
-    { expertise: 'Data Collector', goal: 'Gather information from sensors and network messages' },
-    { expertise: 'Data Analyzer', goal: 'Process raw data to find patterns and anomalies' },
-    { expertise: 'Task Router', goal: 'Direct incoming tasks to the appropriate specialist cell' },
-    { expertise: 'Network Communicator', goal: 'Relay important findings between cell groups' },
-    { expertise: 'Long-Term Memory', goal: 'Store and retrieve historical data for context' },
-    { expertise: 'System Coordinator', goal: 'Oversee network health and resource allocation' },
-    { expertise: 'Security Monitor', goal: 'Detect and report potential intrusions or malfunctions' },
-    { expertise: 'Resource Allocator', goal: 'Distribute energy or computational resources efficiently'},
-    { expertise: 'Predictive Modeler', goal: 'Forecast future network states based on current trends'},
-    { expertise: 'User Interface Liaison', goal: 'Format data and responses for user interaction'},
-    // Add more roles up to 100 if needed
-    { expertise: 'Data Validator', goal: 'Verify the integrity and accuracy of collected data' },
-    { expertise: 'Data Summarizer', goal: 'Condense large datasets into concise summaries' },
-    { expertise: 'Report Generator', goal: 'Create reports based on analyzed data and findings' },
-    { expertise: 'Alert Manager', goal: 'Identify critical events and notify relevant cells or systems' },
-    { expertise: 'Query Processor', goal: 'Handle and respond to data queries from other cells' },
-    { expertise: 'Knowledge Graph Builder', goal: 'Construct and maintain relationships between data points' },
-    { expertise: 'Anomaly Detector', goal: 'Identify unusual patterns or deviations from the norm' },
-    { expertise: 'Trend Forecaster', goal: 'Predict future trends based on historical data' },
-    { expertise: 'Optimization Engine', goal: 'Find optimal solutions for resource allocation or task scheduling' },
-    { expertise: 'Simulation Modeler', goal: 'Create simulations based on current network state' },
-    { expertise: 'Performance Monitor', goal: 'Track the performance and efficiency of other cells' },
-    { expertise: 'Error Logger', goal: 'Record errors and failures occurring within the network' },
-    { expertise: 'Self-Healing Coordinator', goal: 'Initiate recovery processes for failed cells' },
-    { expertise: 'Load Balancer', goal: 'Distribute workload evenly across capable cells' },
-    { expertise: 'Cache Manager', goal: 'Store frequently accessed data for faster retrieval' },
-    { expertise: 'Encryption Specialist', goal: 'Encrypt and decrypt sensitive data transmissions' },
-    { expertise: 'Authentication Provider', goal: 'Verify the identity of cells trying to communicate' },
-    { expertise: 'Authorization Manager', goal: 'Control access permissions for data and resources' },
-    { expertise: 'Threat Assessor', goal: 'Analyze potential security threats and vulnerabilities' },
-    { expertise: 'Intrusion Prevention System', goal: 'Block or mitigate malicious activities' },
-    { expertise: 'Energy Harvester', goal: 'Gather and store energy for the network' },
-    { expertise: 'Resource Distributor', goal: 'Allocate energy and resources based on priority' },
-    { expertise: 'Task Prioritizer', goal: 'Determine the order in which tasks should be executed' },
-    { expertise: 'Workflow Manager', goal: 'Coordinate sequences of tasks across multiple cells' },
-    { expertise: 'Event Correlator', goal: 'Identify relationships between different network events' },
-    { expertise: 'Protocol Translator', goal: 'Enable communication between cells using different protocols' },
-    { expertise: 'External API Gateway', goal: 'Interact with external systems and services' },
-    { expertise: 'Data Transformation Unit', goal: 'Convert data between different formats' },
-    { expertise: 'Compression Engine', goal: 'Reduce the size of data for efficient storage and transmission' },
-    { expertise: 'Decompression Engine', goal: 'Restore compressed data to its original form' },
-    { expertise: 'Natural Language Processor', goal: 'Understand and process human language requests' },
-    { expertise: 'Sentiment Analyzer', goal: 'Determine the sentiment expressed in text data' },
-    { expertise: 'Speech Recognition Unit', goal: 'Convert spoken language into text' },
-    { expertise: 'Text-to-Speech Synthesizer', goal: 'Convert text into spoken language' },
-    { expertise: 'Image Recognition Module', goal: 'Identify objects and features in images' },
-    { expertise: 'Video Analyzer', goal: 'Process and understand content in video streams' },
-    { expertise: 'Geospatial Analyst', goal: 'Analyze location-based data' },
-    { expertise: 'Time Series Analyst', goal: 'Analyze data points indexed in time order' },
-    { expertise: 'Reinforcement Learner', goal: 'Learn optimal behaviors through trial and error' },
-    { expertise: 'Supervised Learner', goal: 'Learn from labeled training data' },
-    { expertise: 'Unsupervised Learner', goal: 'Discover patterns in unlabeled data' },
-    { expertise: 'Decision Tree Builder', goal: 'Create predictive models based on decision rules' },
-    { expertise: 'Neural Network Trainer', goal: 'Train artificial neural networks for complex tasks' },
-    { expertise: 'Genetic Algorithm Optimizer', goal: 'Use evolutionary algorithms to find solutions' },
-    { expertise: 'Swarm Intelligence Coordinator', goal: 'Coordinate decentralized problem-solving agents' },
-    { expertise: 'Fuzzy Logic Controller', goal: 'Handle reasoning with imprecise or uncertain information' },
-    { expertise: 'Expert System Shell', goal: 'Provide a framework for building knowledge-based systems' },
-    { expertise: 'Ontology Manager', goal: 'Define and manage formal representations of knowledge' },
-    { expertise: 'Data Cleanser', goal: 'Identify and correct errors or inconsistencies in data' },
-    { expertise: 'Feature Extractor', goal: 'Derive informative features from raw data' },
-    { expertise: 'Dimensionality Reducer', goal: 'Reduce the number of variables under consideration' },
-    { expertise: 'Clustering Algorithm', goal: 'Group similar data points together' },
-    { expertise: 'Classification Model', goal: 'Assign data points to predefined categories' },
-    { expertise: 'Regression Modeler', goal: 'Predict continuous values based on input variables' },
-    { expertise: 'Collaborative Filter', goal: 'Make recommendations based on user preferences' },
-    { expertise: 'Content-Based Filter', goal: 'Make recommendations based on item characteristics' },
-    { expertise: 'A/B Testing Unit', goal: 'Compare different versions of a strategy or feature' },
-    { expertise: 'Quality Assurance Bot', goal: 'Test the functionality and reliability of other cells' },
-    { expertise: 'Documentation Generator', goal: 'Automatically create documentation for network components' },
-    { expertise: 'User Profiler', goal: 'Build and maintain profiles of network users or entities' },
-    { expertise: 'Context Manager', goal: 'Maintain awareness of the current situation or task context' },
-    { expertise: 'Goal Decomposer', goal: 'Break down high-level goals into smaller, manageable tasks' },
-    { expertise: 'Plan Executor', goal: 'Carry out sequences of actions to achieve a goal' },
-    { expertise: 'Contingency Planner', goal: 'Develop backup plans for potential failures' },
-    { expertise: 'Resource Monitor', goal: 'Track the availability and usage of network resources' },
-    { expertise: 'Conflict Resolver', goal: 'Mediate conflicts between cells with competing goals' },
-    { expertise: 'Negotiation Agent', goal: 'Facilitate agreements between cells' },
-    { expertise: 'Trust Evaluator', goal: 'Assess the reliability and trustworthiness of other cells' },
-    { expertise: 'Reputation Manager', goal: 'Maintain and update the reputation scores of cells' },
-    { expertise: 'Audit Logger', goal: 'Record significant actions and events for auditing purposes' },
-    { expertise: 'Compliance Checker', goal: 'Ensure network operations adhere to regulations or policies' },
-    { expertise: 'Backup Agent', goal: 'Create backups of critical data and cell states' },
-    { expertise: 'Restore Agent', goal: 'Recover data and states from backups' },
-    { expertise: 'Archiving Unit', goal: 'Move old or inactive data to long-term storage' },
-    { expertise: 'Garbage Collector', goal: 'Identify and remove obsolete or unnecessary data/cells' },
-    { expertise: 'Network Topographer', goal: 'Map the structure and connections of the network' },
-    { expertise: 'Visualization Generator', goal: 'Create visual representations of network data or state' },
-    { expertise: 'Feedback Collector', goal: 'Gather feedback from users or other systems' },
-    { expertise: 'Learning Adapter', goal: 'Adjust cell behavior based on feedback or performance' },
-    { expertise: 'Ethical Governor', goal: 'Ensure cell actions align with ethical guidelines' },
-    { expertise: 'Fairness Monitor', goal: 'Detect and mitigate bias in algorithms and decisions' },
-    { expertise: 'Explainability Module', goal: 'Provide explanations for AI decisions or actions' },
-    { expertise: 'Privacy Preserver', goal: 'Implement techniques to protect sensitive data' },
-    { expertise: 'Synchronization Coordinator', goal: 'Ensure consistency across distributed cell states' },
-    { expertise: 'Consensus Builder', goal: 'Help cells reach agreement on shared information or decisions' },
-    { expertise: 'Clock Synchronizer', goal: 'Maintain accurate time across the network' },
-    // Ensure exactly 100 roles defined
-];
