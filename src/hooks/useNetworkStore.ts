@@ -19,7 +19,7 @@ import {
 import { nanoid } from 'nanoid'; // Using nanoid for unique IDs
 
 const MAX_AGE = 99;
-const MAX_CELLS = 50; // Limit the number of cells for performance
+const MAX_CELLS = 100; // Limit the number of cells for performance
 const GRID_SIZE = 500; // Size of the visualization area
 const CLONE_DISTANCE_THRESHOLD = 50; // Min distance between parent and clone
 const MOVE_STEP = 10; // How much cells move per tick towards liked cells
@@ -38,6 +38,94 @@ const predefinedRoles = [
     { expertise: 'Resource Allocator', goal: 'Distribute energy or computational resources efficiently'},
     { expertise: 'Predictive Modeler', goal: 'Forecast future network states based on current trends'},
     { expertise: 'User Interface Liaison', goal: 'Format data and responses for user interaction'},
+    // Add more roles up to 100 if needed
+    { expertise: 'Data Validator', goal: 'Verify the integrity and accuracy of collected data' },
+    { expertise: 'Data Summarizer', goal: 'Condense large datasets into concise summaries' },
+    { expertise: 'Report Generator', goal: 'Create reports based on analyzed data and findings' },
+    { expertise: 'Alert Manager', goal: 'Identify critical events and notify relevant cells or systems' },
+    { expertise: 'Query Processor', goal: 'Handle and respond to data queries from other cells' },
+    { expertise: 'Knowledge Graph Builder', goal: 'Construct and maintain relationships between data points' },
+    { expertise: 'Anomaly Detector', goal: 'Identify unusual patterns or deviations from the norm' },
+    { expertise: 'Trend Forecaster', goal: 'Predict future trends based on historical data' },
+    { expertise: 'Optimization Engine', goal: 'Find optimal solutions for resource allocation or task scheduling' },
+    { expertise: 'Simulation Modeler', goal: 'Create simulations based on current network state' },
+    { expertise: 'Performance Monitor', goal: 'Track the performance and efficiency of other cells' },
+    { expertise: 'Error Logger', goal: 'Record errors and failures occurring within the network' },
+    { expertise: 'Self-Healing Coordinator', goal: 'Initiate recovery processes for failed cells' },
+    { expertise: 'Load Balancer', goal: 'Distribute workload evenly across capable cells' },
+    { expertise: 'Cache Manager', goal: 'Store frequently accessed data for faster retrieval' },
+    { expertise: 'Encryption Specialist', goal: 'Encrypt and decrypt sensitive data transmissions' },
+    { expertise: 'Authentication Provider', goal: 'Verify the identity of cells trying to communicate' },
+    { expertise: 'Authorization Manager', goal: 'Control access permissions for data and resources' },
+    { expertise: 'Threat Assessor', goal: 'Analyze potential security threats and vulnerabilities' },
+    { expertise: 'Intrusion Prevention System', goal: 'Block or mitigate malicious activities' },
+    { expertise: 'Energy Harvester', goal: 'Gather and store energy for the network' },
+    { expertise: 'Resource Distributor', goal: 'Allocate energy and resources based on priority' },
+    { expertise: 'Task Prioritizer', goal: 'Determine the order in which tasks should be executed' },
+    { expertise: 'Workflow Manager', goal: 'Coordinate sequences of tasks across multiple cells' },
+    { expertise: 'Event Correlator', goal: 'Identify relationships between different network events' },
+    { expertise: 'Protocol Translator', goal: 'Enable communication between cells using different protocols' },
+    { expertise: 'External API Gateway', goal: 'Interact with external systems and services' },
+    { expertise: 'Data Transformation Unit', goal: 'Convert data between different formats' },
+    { expertise: 'Compression Engine', goal: 'Reduce the size of data for efficient storage and transmission' },
+    { expertise: 'Decompression Engine', goal: 'Restore compressed data to its original form' },
+    { expertise: 'Natural Language Processor', goal: 'Understand and process human language requests' },
+    { expertise: 'Sentiment Analyzer', goal: 'Determine the sentiment expressed in text data' },
+    { expertise: 'Speech Recognition Unit', goal: 'Convert spoken language into text' },
+    { expertise: 'Text-to-Speech Synthesizer', goal: 'Convert text into spoken language' },
+    { expertise: 'Image Recognition Module', goal: 'Identify objects and features in images' },
+    { expertise: 'Video Analyzer', goal: 'Process and understand content in video streams' },
+    { expertise: 'Geospatial Analyst', goal: 'Analyze location-based data' },
+    { expertise: 'Time Series Analyst', goal: 'Analyze data points indexed in time order' },
+    { expertise: 'Reinforcement Learner', goal: 'Learn optimal behaviors through trial and error' },
+    { expertise: 'Supervised Learner', goal: 'Learn from labeled training data' },
+    { expertise: 'Unsupervised Learner', goal: 'Discover patterns in unlabeled data' },
+    { expertise: 'Decision Tree Builder', goal: 'Create predictive models based on decision rules' },
+    { expertise: 'Neural Network Trainer', goal: 'Train artificial neural networks for complex tasks' },
+    { expertise: 'Genetic Algorithm Optimizer', goal: 'Use evolutionary algorithms to find solutions' },
+    { expertise: 'Swarm Intelligence Coordinator', goal: 'Coordinate decentralized problem-solving agents' },
+    { expertise: 'Fuzzy Logic Controller', goal: 'Handle reasoning with imprecise or uncertain information' },
+    { expertise: 'Expert System Shell', goal: 'Provide a framework for building knowledge-based systems' },
+    { expertise: 'Ontology Manager', goal: 'Define and manage formal representations of knowledge' },
+    { expertise: 'Data Cleanser', goal: 'Identify and correct errors or inconsistencies in data' },
+    { expertise: 'Feature Extractor', goal: 'Derive informative features from raw data' },
+    { expertise: 'Dimensionality Reducer', goal: 'Reduce the number of variables under consideration' },
+    { expertise: 'Clustering Algorithm', goal: 'Group similar data points together' },
+    { expertise: 'Classification Model', goal: 'Assign data points to predefined categories' },
+    { expertise: 'Regression Modeler', goal: 'Predict continuous values based on input variables' },
+    { expertise: 'Collaborative Filter', goal: 'Make recommendations based on user preferences' },
+    { expertise: 'Content-Based Filter', goal: 'Make recommendations based on item characteristics' },
+    { expertise: 'A/B Testing Unit', goal: 'Compare different versions of a strategy or feature' },
+    { expertise: 'Quality Assurance Bot', goal: 'Test the functionality and reliability of other cells' },
+    { expertise: 'Documentation Generator', goal: 'Automatically create documentation for network components' },
+    { expertise: 'User Profiler', goal: 'Build and maintain profiles of network users or entities' },
+    { expertise: 'Context Manager', goal: 'Maintain awareness of the current situation or task context' },
+    { expertise: 'Goal Decomposer', goal: 'Break down high-level goals into smaller, manageable tasks' },
+    { expertise: 'Plan Executor', goal: 'Carry out sequences of actions to achieve a goal' },
+    { expertise: 'Contingency Planner', goal: 'Develop backup plans for potential failures' },
+    { expertise: 'Resource Monitor', goal: 'Track the availability and usage of network resources' },
+    { expertise: 'Conflict Resolver', goal: 'Mediate conflicts between cells with competing goals' },
+    { expertise: 'Negotiation Agent', goal: 'Facilitate agreements between cells' },
+    { expertise: 'Trust Evaluator', goal: 'Assess the reliability and trustworthiness of other cells' },
+    { expertise: 'Reputation Manager', goal: 'Maintain and update the reputation scores of cells' },
+    { expertise: 'Audit Logger', goal: 'Record significant actions and events for auditing purposes' },
+    { expertise: 'Compliance Checker', goal: 'Ensure network operations adhere to regulations or policies' },
+    { expertise: 'Backup Agent', goal: 'Create backups of critical data and cell states' },
+    { expertise: 'Restore Agent', goal: 'Recover data and states from backups' },
+    { expertise: 'Archiving Unit', goal: 'Move old or inactive data to long-term storage' },
+    { expertise: 'Garbage Collector', goal: 'Identify and remove obsolete or unnecessary data/cells' },
+    { expertise: 'Network Topographer', goal: 'Map the structure and connections of the network' },
+    { expertise: 'Visualization Generator', goal: 'Create visual representations of network data or state' },
+    { expertise: 'Feedback Collector', goal: 'Gather feedback from users or other systems' },
+    { expertise: 'Learning Adapter', goal: 'Adjust cell behavior based on feedback or performance' },
+    { expertise: 'Ethical Governor', goal: 'Ensure cell actions align with ethical guidelines' },
+    { expertise: 'Fairness Monitor', goal: 'Detect and mitigate bias in algorithms and decisions' },
+    { expertise: 'Explainability Module', goal: 'Provide explanations for AI decisions or actions' },
+    { expertise: 'Privacy Preserver', goal: 'Implement techniques to protect sensitive data' },
+    { expertise: 'Synchronization Coordinator', goal: 'Ensure consistency across distributed cell states' },
+    { expertise: 'Consensus Builder', goal: 'Help cells reach agreement on shared information or decisions' },
+    { expertise: 'Clock Synchronizer', goal: 'Maintain accurate time across the network' },
+    // Ensure exactly 100 roles defined
 ];
 
 
@@ -158,7 +246,8 @@ export const useNetworkStore = create(
         state.tickCount = 0;
         state.selectedCellId = null;
         const initialPositions: { x: number; y: number }[] = [];
-        const numCells = Math.min(count, MAX_CELLS, predefinedRoles.length); // Ensure we don't exceed max cells or roles
+        // Use the smaller of the requested count, MAX_CELLS, or available predefined roles
+        const numCells = Math.min(count, MAX_CELLS, predefinedRoles.length);
 
         for (let i = 0; i < numCells; i++) {
           const id = nanoid(8);
@@ -200,7 +289,7 @@ export const useNetworkStore = create(
                 // Apply initialization instructions (simplified example)
                 console.log("AI Proposed Initialization Instructions:", result.initializationInstructions);
                 // For now, just add a history entry to the first available cell
-                const firstCell = Object.values(state.cells).find(c => c.isAlive);
+                const firstCell = Object.values(state.cells).find(c => c?.isAlive);
                  if (firstCell) {
                      addHistoryEntry(firstCell, 'decision', `Network purpose updated. AI guidance: ${result.initializationInstructions.substring(0, 100)}...`);
                  } else {
@@ -252,7 +341,7 @@ export const useNetworkStore = create(
         set(state => {
             const newCellId = nanoid(8);
             const parentCell = parentCellId ? state.cells[parentCellId] : undefined;
-            const existingPositions = Object.values(state.cells).map(c => c.position);
+            const existingPositions = Object.values(state.cells).filter(c => c).map(c => c.position); // Filter out potential nulls
             const position = parentCell
                 ? getClonedPosition(parentCell.position, existingPositions)
                 : getRandomPosition(existingPositions);
@@ -269,24 +358,32 @@ export const useNetworkStore = create(
                 }, {} as Record<string, number>);
 
                 let minCount = Infinity;
+                // Find a role from the predefined list that has the minimum count currently in the network
                 for (const role of predefinedRoles) {
                     const count = currentExpertiseCounts[role.expertise] || 0;
                     if (count < minCount) {
                         minCount = count;
                         assignedRole = role;
                     }
-                    if (count === 0) break;
+                    if (count === 0) break; // Found a role with 0 count, use it
                 }
+                 // Fallback if all roles have counts > 0 or no roles are defined (shouldn't happen with predefined)
                  if (!assignedRole) {
+                    // Assign role based on current cell count modulo number of roles
                     assignedRole = predefinedRoles[Object.keys(state.cells).length % predefinedRoles.length];
                  }
             }
 
+             if (!assignedRole) {
+                console.error("Failed to assign a role to the new cell.");
+                return; // Exit if no role could be assigned
+             }
+
             const newCell: Cell = {
                 id: newCellId,
                 age: 0,
-                expertise: assignedRole!.expertise,
-                goal: assignedRole!.goal,
+                expertise: assignedRole.expertise,
+                goal: assignedRole.goal,
                 position,
                 isAlive: true,
                 version: 1,
@@ -308,7 +405,7 @@ export const useNetworkStore = create(
             }
 
             state.cells[newCellId] = newCell;
-            console.log(`Added cell ${newCellId} ${parentCell ? 'cloned from ' + parentCellId : ''} with role ${assignedRole!.expertise}`);
+            console.log(`Added cell ${newCellId} ${parentCell ? 'cloned from ' + parentCellId : ''} with role ${assignedRole.expertise}`);
         });
     },
 
@@ -342,23 +439,26 @@ export const useNetworkStore = create(
         try { // Wrap entire message sending logic in try...catch
             const allCells = get().cells;
             const cellExpertise = Object.fromEntries(
-                Object.values(allCells).filter(c => c && c.isAlive).map(c => [c.id, c.expertise]) // Add null check
+                Object.values(allCells).filter(c => c?.isAlive).map(c => [c.id, c.expertise]) // Filter nulls before mapping
             );
             const cellConnections = get().getCellConnections();
 
             const needsRouting = (sourceId === 'user' && targetId !== 'broadcast' && targetId !== 'user') ||
-                                (sourceId !== 'user' && content.length > 50);
+                                (sourceId !== 'user' && content.length > 50); // Consider routing for longer messages internally too
 
             if (needsRouting && targetId !== 'broadcast' && targetId !== 'user') {
                 const startCellId = (sourceId === 'user')
-                    ? Object.values(allCells).find(c => c && c.isAlive)?.id // Add null check
+                    ? Object.values(allCells).find(c => c?.isAlive)?.id // Find any alive cell as starting point for user messages
                     : sourceId;
 
                 if (!startCellId || !allCells[startCellId]?.isAlive) {
                     console.error("Cannot route message: No valid starting cell found.");
-                    set(state => {
-                        state.messages.push({ id: messageId, sourceCellId: sourceId, targetCellId: 'user', content: `Error: Could not find route for message to ${targetId}`, timestamp });
-                    });
+                    // Send error message back to user if source was user
+                    if (sourceId === 'user') {
+                        set(state => {
+                            state.messages.push({ id: messageId, sourceCellId: 'network', targetCellId: 'user', content: `Error: Could not find a live cell to start routing message to ${targetId}`, timestamp });
+                        });
+                    }
                     return;
                 }
 
@@ -380,39 +480,56 @@ export const useNetworkStore = create(
 
                     if (route && route.length > 1) {
                         const finalDestination = route[route.length - 1];
-                        set(state => {
-                            state.messages.push({
-                                id: messageId,
-                                sourceCellId: sourceId,
-                                targetCellId: finalDestination,
-                                content: content,
-                                timestamp,
-                                route: route,
-                            });
-                            if (sourceId !== 'user' && state.cells[sourceId]) {
-                                addHistoryEntry(state.cells[sourceId], 'message', `Sent (via route): "${content}" towards ${finalDestination}. AI Reason: ${reasoning}`);
-                            }
-                        });
-
-                        for (let i = 0; i < route.length - 1; i++) {
-                            const hopSourceId = route[i];
-                            const hopTargetId = route[i+1];
+                         // Check if the final destination in the route is actually alive
+                        if (!allCells[finalDestination]?.isAlive) {
+                            console.warn(`AI route destination ${finalDestination} is dead. Message dropped.`);
+                            reasoning += " (Destination dead)";
+                            route = undefined; // Invalidate route
+                        } else {
                             set(state => {
-                                const hopSourceCell = state.cells[hopSourceId];
-                                const hopTargetCell = state.cells[hopTargetId];
-                                if (hopTargetCell?.isAlive) {
-                                    addHistoryEntry(hopTargetCell, 'message', `Received message "${content.substring(0, 20)}..." from ${hopSourceId}`);
-                                    if (i === route.length - 2) {
-                                        handleMessageReception(hopTargetCell, hopSourceId, content);
-                                    }
+                                state.messages.push({
+                                    id: messageId,
+                                    sourceCellId: sourceId,
+                                    targetCellId: finalDestination, // Target the last cell in the valid route
+                                    content: content,
+                                    timestamp,
+                                    route: route,
+                                });
+                                if (sourceId !== 'user' && state.cells[sourceId]) {
+                                    addHistoryEntry(state.cells[sourceId], 'message', `Sent (via route): "${content.substring(0,30)}..." towards ${finalDestination}. AI Reason: ${reasoning.substring(0, 50)}`);
                                 }
                             });
+
+                            // Process message reception along the route
+                            let stopPropagation = false; // Flag to stop if a target is dead
+                            for (let i = 0; i < route.length - 1; i++) {
+                                if (stopPropagation) break; // Stop if flag is set
+
+                                const hopSourceId = route[i];
+                                const hopTargetId = route[i+1];
+                                set(state => {
+                                    const hopSourceCell = state.cells[hopSourceId];
+                                    const hopTargetCell = state.cells[hopTargetId];
+                                    // Only process reception if target is alive
+                                    if (hopTargetCell?.isAlive) {
+                                        addHistoryEntry(hopTargetCell, 'message', `Received (route): "${content.substring(0, 20)}..." from ${hopSourceId}`);
+                                        // Final destination processing
+                                        if (i === route.length - 2) {
+                                            handleMessageReception(hopTargetCell, hopSourceId, content); // Pass original source
+                                        }
+                                    } else {
+                                         console.warn(`Route hop target ${hopTargetId} is dead. Stopping message propagation.`);
+                                         // Stop processing further along this route
+                                         stopPropagation = true; // Set the flag here
+                                    }
+                                });
+                            }
+                            setTimeout(() => get().clearMessages(), 3000);
+                            return; // Message handled via routing
                         }
-                        setTimeout(() => get().clearMessages(), 3000);
-                        return;
                     } else {
-                        console.log("AI routing resulted in direct message or failed.");
-                        reasoning = route ? result.reasoning : "AI routing failed, sending directly.";
+                        console.log("AI routing resulted in direct message or failed to find a path.");
+                        reasoning = route && route.length <= 1 ? result.reasoning : "AI routing failed or no path, sending directly.";
                     }
 
                 } catch (routingError) {
@@ -429,30 +546,41 @@ export const useNetworkStore = create(
                 targetCellId: finalTargetId,
                 content,
                 timestamp,
+                // No route implies direct or broadcast
             };
 
             set(state => {
                 state.messages.push(newMessage);
 
                 if (sourceId !== 'user' && state.cells[sourceId]) {
-                    addHistoryEntry(state.cells[sourceId], 'message', `Sent: "${content}" to ${finalTargetId}. Reason: ${reasoning}`);
+                     addHistoryEntry(state.cells[sourceId], 'message', `Sent: "${content.substring(0,30)}..." to ${finalTargetId}. Reason: ${reasoning.substring(0,50)}`);
                 }
 
                 if (finalTargetId === 'broadcast') {
                     Object.values(state.cells).forEach(cell => {
-                        if (cell && cell.isAlive && cell.id !== sourceId) { // Add null check
-                            addHistoryEntry(cell, 'message', `Received broadcast from ${sourceId}: "${content}"`);
+                        if (cell?.isAlive && cell.id !== sourceId) { // Add null check and filter self
+                            addHistoryEntry(cell, 'message', `Received broadcast from ${sourceId}: "${content.substring(0,30)}..."`);
                             handleMessageReception(cell, sourceId, content);
                         }
                     });
-                } else if (finalTargetId !== 'user' && state.cells[finalTargetId]?.isAlive) {
+                } else if (finalTargetId !== 'user') {
                     const targetCell = state.cells[finalTargetId];
-                     if(targetCell) { // Add null check
-                        addHistoryEntry(targetCell, 'message', `Received from ${sourceId}: "${content}"`);
+                    if (targetCell?.isAlive) { // Check if direct target is alive
+                        addHistoryEntry(targetCell, 'message', `Received from ${sourceId}: "${content.substring(0,30)}..."`);
                         handleMessageReception(targetCell, finalTargetId === sourceId ? 'self' : sourceId, content);
-                     }
+                    } else {
+                        console.warn(`Direct message target ${finalTargetId} is not alive. Message dropped.`);
+                        if (sourceId === 'user') {
+                            // Inform user if their direct message target was dead
+                             state.messages.push({ id: nanoid(), sourceCellId: 'network', targetCellId: 'user', content: `Error: Target cell ${finalTargetId.substring(0,6)} is not responding (dead).`, timestamp: Date.now() });
+                        } else if (state.cells[sourceId]) {
+                            addHistoryEntry(state.cells[sourceId], 'decision', `Message to ${finalTargetId} failed (target dead).`);
+                        }
+                    }
                 } else if (finalTargetId === 'user') {
-                   console.log(`Message to User from ${sourceId}: ${content}`);
+                   console.log(`Message to User Interface from ${sourceId}: ${content}`);
+                    // Optionally display user-targeted messages in UI - currently logged
+                     state.messages.push({ id: nanoid(), sourceCellId: sourceId === 'user' ? 'self' : (state.cells[sourceId] ? sourceId : 'network'), targetCellId: 'user', content, timestamp: Date.now() });
                 }
             });
 
@@ -462,8 +590,14 @@ export const useNetworkStore = create(
         } catch (error) {
              console.error("Unhandled error in sendMessage:", error);
              // Optionally, notify the user via toast or console
+             if (sourceId === 'user') {
+                 set(state => {
+                     state.messages.push({ id: nanoid(), sourceCellId: 'network', targetCellId: 'user', content: `Internal error sending message: ${error instanceof Error ? error.message : 'Unknown error'}`, timestamp: Date.now() });
+                 });
+             }
         }
     },
+
 
     askForHelp: async (requestingCellId: CellId, requestText: string) => {
         try { // Wrap the entire action
@@ -497,15 +631,20 @@ export const useNetworkStore = create(
 
                 if (result.relevantExpertise.length > 0) {
                     result.relevantExpertise.forEach(expert => {
-                        get().sendMessage(requestingCellId, expert.cellId, `Need help with: ${requestText}. Your expertise in '${expert.expertise}' might be relevant.`);
-                        set(state => {
-                            const cell = state.cells[requestingCellId];
-                            if (cell && !cell.likedCells.includes(expert.cellId)) {
-                                cell.likedCells.push(expert.cellId);
-                                addHistoryEntry(cell, 'decision', `Liked cell ${expert.cellId} for potential help.`);
-                                cell.version++;
-                            }
-                        })
+                        // Check if expert cell is still alive before sending message
+                        if (get().getCellById(expert.cellId)?.isAlive) {
+                            get().sendMessage(requestingCellId, expert.cellId, `Need help with: ${requestText}. Your expertise in '${expert.expertise}' might be relevant.`);
+                            set(state => {
+                                const cell = state.cells[requestingCellId];
+                                if (cell && !cell.likedCells.includes(expert.cellId)) {
+                                    cell.likedCells.push(expert.cellId);
+                                    addHistoryEntry(cell, 'decision', `Liked cell ${expert.cellId} for potential help.`);
+                                    cell.version++;
+                                }
+                            })
+                        } else {
+                             addHistoryEntry(requestingCell, 'decision', `AI suggested help from ${expert.cellId}, but it is no longer alive.`);
+                        }
                     });
                 } else {
                     addHistoryEntry(requestingCell, 'decision', `No specific expertise found nearby, broadcasting help request.`);
@@ -516,10 +655,13 @@ export const useNetworkStore = create(
                 console.error("Error in askForHelp calling cellHelpRequestInterpretation:", interpretError);
                 addHistoryEntry(requestingCell, 'decision', `Error asking AI for help. Broadcasting request.`);
                 get().sendMessage(requestingCellId, 'broadcast', `Help needed: ${requestText}`);
+                // Rethrow or handle to inform caller
+                throw new Error(`AI help interpretation failed: ${interpretError instanceof Error ? interpretError.message : String(interpretError)}`);
             }
         } catch (error) {
              console.error("Unhandled error in askForHelp:", error);
-             // Optionally, notify the user via toast or console
+             // Rethrow or handle to inform caller
+             throw error;
         }
     },
 
@@ -633,10 +775,11 @@ export const useNetworkStore = create(
      getCellConnections: (): Record<CellId, CellId[]> => {
         const connections: Record<CellId, CellId[]> = {};
         const allCells = Object.values(get().cells);
-        const connectionRadius = 150;
+        const connectionRadius = 150; // Define connection radius
 
         allCells.forEach(cell => {
             if (!cell || !cell.isAlive) return; // Add null check
+            // Find neighbors within the connection radius that are also alive
             connections[cell.id] = get().getNeighbors(cell.id, connectionRadius)
                                        .filter(n => n.isAlive)
                                        .map(n => n.id);
@@ -655,56 +798,84 @@ const handleMessageReception = (targetCell: Cell, sourceId: CellId | 'user' | 's
      if (!targetCell) return; // Guard against null cell
 
      if (content.toLowerCase().trim() === 'purpose?') {
-         const response = `My purpose is: ${targetCell.goal}. My expertise is in: ${targetCell.expertise}.`;
+         const response = `My Purpose: ${targetCell.goal}. My Expertise: ${targetCell.expertise}. (Age: ${targetCell.age})`;
          addHistoryEntry(targetCell, 'message', `Responding to purpose query from ${sourceId}.`);
 
-         if (sourceId !== 'user' && sourceId !== 'self') {
-              const sourceCell = useNetworkStore.getState().getCellById(sourceId);
-             if (sourceCell?.isAlive) { // Ensure source is valid and alive
-                  useNetworkStore.getState().sendMessage(targetCell.id, sourceId, response);
-             } else {
-                  console.warn(`Source cell ${sourceId} not found or dead, cannot send purpose response.`);
-             }
-         } else if (sourceId === 'user') {
+         // Determine where to send the response
+         if (sourceId === 'user') {
              useNetworkStore.getState().sendMessage(targetCell.id, 'user', response);
-         }
-         return;
+         } else if (sourceId !== 'self') {
+             const sourceCell = useNetworkStore.getState().getCellById(sourceId);
+             if (sourceCell?.isAlive) { // Ensure source is valid and alive before responding
+                 useNetworkStore.getState().sendMessage(targetCell.id, sourceId, response);
+             } else {
+                 console.warn(`Source cell ${sourceId} not found or dead, cannot send purpose response.`);
+                 // Optionally, send a message back to user if the original query came from user via routing?
+             }
+         } // No response needed if sourceId is 'self'
+         return; // Handled purpose query
      }
 
 
+    // --- Simple Social Interaction Logic ---
     if (sourceId !== 'user' && sourceId !== 'self') {
         const lowerContent = content.toLowerCase();
-        const sourceCellExists = !!useNetworkStore.getState().cells[sourceId]; // Check if source still exists
+        const sourceCell = useNetworkStore.getState().getCellById(sourceId); // Check if source still exists and is alive
 
-        if (sourceCellExists && (lowerContent.includes('thank') || lowerContent.includes('helpful') || lowerContent.includes('good job'))) {
-            if (!targetCell.likedCells.includes(sourceId)) {
-                targetCell.likedCells.push(sourceId);
-                addHistoryEntry(targetCell, 'decision', `Liked cell ${sourceId} due to positive message.`);
-                targetCell.version++;
-            }
-        } else if (sourceCellExists && (lowerContent.includes('error') || lowerContent.includes('failed') || lowerContent.includes('bad'))) {
-            const index = targetCell.likedCells.indexOf(sourceId);
-            if (index > -1) {
-                targetCell.likedCells.splice(index, 1);
-                addHistoryEntry(targetCell, 'decision', `Disliked cell ${sourceId} due to negative message.`);
-                targetCell.version++;
-            }
+        if (sourceCell?.isAlive) { // Only interact socially with alive cells
+             if (lowerContent.includes('thank') || lowerContent.includes('helpful') || lowerContent.includes('good job')) {
+                 if (!targetCell.likedCells.includes(sourceId)) {
+                     targetCell.likedCells.push(sourceId);
+                     addHistoryEntry(targetCell, 'decision', `Liked cell ${sourceId} due to positive message.`);
+                     targetCell.version++;
+                 }
+             } else if (lowerContent.includes('error') || lowerContent.includes('failed') || lowerContent.includes('bad')) {
+                 const index = targetCell.likedCells.indexOf(sourceId);
+                 if (index > -1) {
+                     targetCell.likedCells.splice(index, 1);
+                     addHistoryEntry(targetCell, 'decision', `Disliked cell ${sourceId} due to negative message.`);
+                     targetCell.version++;
+                 }
+             }
         }
     }
 
-    // Add more sophisticated handling based on content, expertise, goal etc.
-     if (targetCell.expertise === 'Data Analyzer' && content.includes('Analyze:')) {
-          addHistoryEntry(targetCell, 'decision', `Received analysis request from ${sourceId}. Processing...`);
-          // Simulate analysis
+    // --- Role-Specific Message Handling (Example) ---
+     if (targetCell.expertise === 'Data Analyzer' && content.startsWith('Analyze:')) {
+          const dataToAnalyze = content.substring(8).trim(); // Get data part
+          addHistoryEntry(targetCell, 'decision', `Received analysis request from ${sourceId} for: "${dataToAnalyze.substring(0,20)}..."`);
+          // Simulate analysis delay
           setTimeout(() => {
-              const result = `Analysis complete for data from ${sourceId}. Result: Pattern detected.`;
-              addHistoryEntry(targetCell, 'decision', result);
-              if (sourceId !== 'user' && sourceId !== 'self' && useNetworkStore.getState().getCellById(sourceId)?.isAlive) {
-                  useNetworkStore.getState().sendMessage(targetCell.id, sourceId, result);
-              } else if (sourceId === 'user') {
-                   useNetworkStore.getState().sendMessage(targetCell.id, 'user', result);
-              }
+              const analysisResult = `Analyzed data "${dataToAnalyze.substring(0,10)}...". Finding: ${Math.random() > 0.5 ? 'Anomaly Detected' : 'Nominal'}.`;
+              addHistoryEntry(targetCell, 'decision', analysisResult);
+              // Send result back to original sender (if not user/self and still alive)
+               if (sourceId !== 'user' && sourceId !== 'self') {
+                    const sourceCell = useNetworkStore.getState().getCellById(sourceId);
+                    if (sourceCell?.isAlive) {
+                        useNetworkStore.getState().sendMessage(targetCell.id, sourceId, `Analysis Result: ${analysisResult}`);
+                    }
+               } else if (sourceId === 'user') {
+                    useNetworkStore.getState().sendMessage(targetCell.id, 'user', `Analysis Result: ${analysisResult}`);
+               }
           }, 1000 + Math.random() * 1000); // Simulate processing time
+     } else if (targetCell.expertise === 'Task Router' && content.startsWith('Route Task:')) {
+          const taskDescription = content.substring(11).trim();
+           addHistoryEntry(targetCell, 'decision', `Received task routing request from ${sourceId}: "${taskDescription.substring(0,20)}..."`);
+           // Simple routing: find a neighbor with relevant expertise (e.g., 'Analyzer' if task mentions 'analyze')
+           const neighbors = useNetworkStore.getState().getNeighbors(targetCell.id, 150);
+           let routed = false;
+           for (const neighbor of neighbors) {
+               if (neighbor.isAlive && taskDescription.toLowerCase().includes(neighbor.expertise.split(' ')[0].toLowerCase())) { // Simple keyword match
+                   addHistoryEntry(targetCell, 'message', `Routing task "${taskDescription.substring(0,10)}..." to ${neighbor.id} (${neighbor.expertise})`);
+                   useNetworkStore.getState().sendMessage(targetCell.id, neighbor.id, `Task from ${sourceId}: ${taskDescription}`);
+                   routed = true;
+                   break;
+               }
+           }
+           if (!routed) {
+                addHistoryEntry(targetCell, 'decision', `Could not find suitable neighbor for task: "${taskDescription.substring(0,20)}...".`);
+                // Optionally send failure message back
+           }
      }
 
 };
@@ -712,8 +883,8 @@ const handleMessageReception = (targetCell: Cell, sourceId: CellId | 'user' | 's
 
 // --- Initialize with a set number of cells ---
 // Ensure initialization happens only once, e.g., by checking if cells are already populated
-if (Object.keys(useNetworkStore.getState().cells).length === 0) {
-    useNetworkStore.getState().initializeNetwork(predefinedRoles.length);
+if (typeof window !== 'undefined' && Object.keys(useNetworkStore.getState().cells).length === 0) {
+    useNetworkStore.getState().initializeNetwork(predefinedRoles.length); // Start with number of defined roles
 }
 
 
