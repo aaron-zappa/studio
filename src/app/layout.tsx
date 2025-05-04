@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryProvider } from '@/components/providers/query-provider'; // Import the new provider
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -19,8 +19,6 @@ export const metadata: Metadata = {
   description: 'AI Network Simulation',
 };
 
-const queryClient = new QueryClient();
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,10 +27,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <QueryClientProvider client={queryClient}>
+        {/* Use the QueryProvider wrapper */}
+        <QueryProvider>
           {children}
           <Toaster />
-        </QueryClientProvider>
+        </QueryProvider>
       </body>
     </html>
   );
