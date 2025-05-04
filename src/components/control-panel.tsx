@@ -67,8 +67,14 @@ export const ControlPanel: React.FC = () => {
   const [isAutoTicking, setIsAutoTicking] = useState(true); // Assume auto-tick starts by default
   const [newPurpose, setNewPurpose] = useState(purpose);
   const [isSettingPurpose, setIsSettingPurpose] = useState(false); // Loading state for purpose setting
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [isAskingForHelp, setIsAskingForHelp] = useState(false);
+
 
   const selectedCell = selectedCellId ? getCellById(selectedCellId) : null;
+
+  // Effect to check initial auto-tick status from the store if needed
+  // (Currently assumes it starts on by default)
 
   useEffect(() => {
     setNewPurpose(purpose); // Sync local state if global purpose changes externally
@@ -91,7 +97,6 @@ export const ControlPanel: React.FC = () => {
         toast({ title: "Purpose Update Triggered", description: "AI is processing the new network purpose." });
     } catch (error) {
          console.error("Failed to set purpose:", error);
-         // Display specific error from the action if available
          const errorMessage = error instanceof Error ? error.message : "Could not update network purpose.";
          toast({ title: "Error Setting Purpose", description: errorMessage, variant: "destructive" });
     } finally {
@@ -105,22 +110,22 @@ export const ControlPanel: React.FC = () => {
         toast({ title: "Error", description: "Message cannot be empty.", variant: "destructive" });
         return;
     };
+    setIsSendingMessage(true);
     let source: string | 'user' = 'user';
-    // If sending to 'user', it implies a cell is sending to the user interface
-    // If sending from 'user', it's the user sending into the network
-    // Let's assume ControlPanel always sends *from* the user for now.
     let target = targetCellId;
 
-    if (selectedCellId && targetCellId === selectedCellId) {
-      // If target is the selected cell, maybe interpret as user replying *to* the cell?
-      // For now, keep it simple: user sends to target.
-      source = 'user'; // User is sending the message
-      // We already have target = selectedCellId
+    // Simplified logic: Control panel always sends from 'user'
+    try {
+        await sendMessage(source, target, messageContent);
+        toast({ title: "Message Sent", description: `To: ${target === 'broadcast' ? 'All Cells' : (target === 'user' ? 'User Interface' : `Cell ${target.substring(0,6)}...`)}` });
+        setMessageContent(''); // Clear input after successful send
+    } catch (error) {
+        console.error("Failed to send message:", error);
+        const errorMessage = error instanceof Error ? error.message : "Could not send message.";
+        toast({ title: "Error Sending Message", description: errorMessage, variant: "destructive" });
+    } finally {
+        setIsSendingMessage(false);
     }
-
-    await sendMessage(source, target, messageContent);
-    toast({ title: "Message Sent", description: `To: ${target === 'broadcast' ? 'All Cells' : (target === 'user' ? 'User Interface' : `Cell ${target.substring(0,6)}...`)}` });
-    setMessageContent(''); // Clear input after sending
   };
 
   const handleAskForHelp = async () => {
@@ -128,17 +133,27 @@ export const ControlPanel: React.FC = () => {
         toast({ title: "Error", description: "Select a cell and enter help request.", variant: "destructive" });
         return;
     };
-    await askForHelp(selectedCellId, helpRequestText);
-    toast({ title: "Help Request Sent", description: `Cell ${selectedCellId.substring(0,6)} asked for help.` });
-    setHelpRequestText('');
+    setIsAskingForHelp(true);
+    try {
+        await askForHelp(selectedCellId, helpRequestText);
+        toast({ title: "Help Request Sent", description: `Cell ${selectedCellId.substring(0,6)} asked for help.` });
+        setHelpRequestText(''); // Clear input after successful request
+    } catch (error) {
+        console.error("Failed to ask for help:", error);
+        const errorMessage = error instanceof Error ? error.message : "Could not send help request.";
+        toast({ title: "Error Asking for Help", description: errorMessage, variant: "destructive" });
+    } finally {
+        setIsAskingForHelp(false);
+    }
   };
+
 
   const handleToggleAutoTick = () => {
     if (isAutoTicking) {
       stopAutoTick();
       toast({ title: "Auto-Tick Paused" });
     } else {
-      startAutoTick(); // Assumes default interval, adjust if needed
+      startAutoTick();
       toast({ title: "Auto-Tick Resumed" });
     }
     setIsAutoTicking(!isAutoTicking);
@@ -165,7 +180,6 @@ export const ControlPanel: React.FC = () => {
       const idToRemove = selectedCellId;
       removeCell(idToRemove);
       toast({ title: "Cell Removed", description: `Cell ${idToRemove.substring(0,6)} deleted.` });
-      // selectedCellId is cleared within removeCell if it matches
     } else {
         toast({ title: "Error", description: "No cell selected to remove.", variant: "destructive" });
     }
@@ -192,7 +206,7 @@ export const ControlPanel: React.FC = () => {
         <SidebarSeparator />
         <SidebarContent className="p-0">
           <ScrollArea className="h-full px-2">
-            <Accordion type="multiple" defaultValue={['item-1', 'item-2']} className="w-full">
+            <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3']} className="w-full">
               {/* Network Controls */}
               <AccordionItem value="item-1">
                 <AccordionTrigger className="px-2 text-base hover:no-underline">
@@ -224,7 +238,7 @@ export const ControlPanel: React.FC = () => {
                     <Slider
                       id="network-size"
                       min={1}
-                      max={10} // Limit initial size to number of predefined roles
+                      max={predefinedRoles.length} // Use number of roles as max initial size
                       step={1}
                       value={[networkSize]}
                       onValueChange={(value) => setNetworkSize(value[0])}
@@ -244,7 +258,7 @@ export const ControlPanel: React.FC = () => {
 
                     <Separator />
                      <Button onClick={handleAddCell} size="sm" variant="secondary" className="w-full">
-                        <Plus className="mr-2 size-4" /> Add Cell (Random Role)
+                        <Plus className="mr-2 size-4" /> Add Cell (Next Role)
                      </Button>
                 </AccordionContent>
               </AccordionItem>
@@ -284,9 +298,10 @@ export const ControlPanel: React.FC = () => {
                             value={helpRequestText}
                             onChange={(e) => setHelpRequestText(e.target.value)}
                             className="h-20"
-                            disabled={!selectedCell.isAlive}
+                            disabled={!selectedCell.isAlive || isAskingForHelp}
                         />
-                        <Button onClick={handleAskForHelp} size="sm" className="w-full" disabled={!selectedCell.isAlive}>
+                        <Button onClick={handleAskForHelp} size="sm" className="w-full" disabled={!selectedCell.isAlive || isAskingForHelp}>
+                             {isAskingForHelp && <RefreshCw className="mr-2 size-4 animate-spin" />}
                             <HelpCircle className="mr-2 size-4" /> Ask for Help
                         </Button>
                         <Separator className="my-3" />
@@ -340,14 +355,14 @@ export const ControlPanel: React.FC = () => {
                             <option value="broadcast">Broadcast to All</option>
                             <option value="user">To User Interface (Debug)</option>
                             <optgroup label="Alive Cells">
-                                {Object.values(cells).filter(c => c.isAlive).sort((a,b) => a.id.localeCompare(b.id)).map(cell => (
+                                {Object.values(cells).filter(c => c && c.isAlive).sort((a,b) => a.id.localeCompare(b.id)).map(cell => ( // Add null check
                                     <option key={cell.id} value={cell.id}>
                                         Cell {cell.id.substring(0, 6)} ({cell.expertise})
                                     </option>
                                 ))}
                             </optgroup>
                             <optgroup label="Dead Cells (Inspect Only)">
-                                {Object.values(cells).filter(c => !c.isAlive).sort((a,b) => a.id.localeCompare(b.id)).map(cell => (
+                                {Object.values(cells).filter(c => c && !c.isAlive).sort((a,b) => a.id.localeCompare(b.id)).map(cell => ( // Add null check
                                      <option key={cell.id} value={cell.id} disabled>
                                         Cell {cell.id.substring(0, 6)} (Dead)
                                      </option>
@@ -363,9 +378,11 @@ export const ControlPanel: React.FC = () => {
                        value={messageContent}
                        onChange={(e) => setMessageContent(e.target.value)}
                        className="h-24"
+                       disabled={isSendingMessage}
                      />
                     </div>
-                   <Button onClick={handleSendMessage} size="sm" className="w-full">
+                   <Button onClick={handleSendMessage} size="sm" className="w-full" disabled={isSendingMessage}>
+                     {isSendingMessage && <RefreshCw className="mr-2 size-4 animate-spin" />}
                      <Send className="mr-2 size-4" /> Send Message
                    </Button>
                  </AccordionContent>
@@ -378,3 +395,17 @@ export const ControlPanel: React.FC = () => {
     </>
   );
 };
+
+// Helper for predefined roles length used in Slider max
+const predefinedRoles = [
+    { expertise: 'Data Collector', goal: 'Gather information from sensors and network messages' },
+    { expertise: 'Data Analyzer', goal: 'Process raw data to find patterns and anomalies' },
+    { expertise: 'Task Router', goal: 'Direct incoming tasks to the appropriate specialist cell' },
+    { expertise: 'Network Communicator', goal: 'Relay important findings between cell groups' },
+    { expertise: 'Long-Term Memory', goal: 'Store and retrieve historical data for context' },
+    { expertise: 'System Coordinator', goal: 'Oversee network health and resource allocation' },
+    { expertise: 'Security Monitor', goal: 'Detect and report potential intrusions or malfunctions' },
+    { expertise: 'Resource Allocator', goal: 'Distribute energy or computational resources efficiently'},
+    { expertise: 'Predictive Modeler', goal: 'Forecast future network states based on current trends'},
+    { expertise: 'User Interface Liaison', goal: 'Format data and responses for user interaction'},
+];
