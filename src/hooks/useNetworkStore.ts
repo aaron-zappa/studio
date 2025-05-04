@@ -24,7 +24,7 @@ const MAX_AGE = 99;
 const MAX_CELLS = 100; // Limit the number of cells for performance
 const GRID_SIZE = 500; // Size of the visualization area
 const CLONE_DISTANCE_THRESHOLD = 50; // Min distance between parent and clone
-const MOVE_STEP = 30; // Increased movement step further
+const MOVE_STEP = 40; // Increased movement step further
 const POSITION_HISTORY_LIMIT = 15; // Store the last 15 positions for trails
 const MAX_HISTORY = 100; // Max history entries per cell
 
@@ -580,11 +580,11 @@ export const useNetworkStore = create(
             const cellConnections = get().getCellConnections();
 
             const needsRouting = (sourceId === 'user' && targetId !== 'broadcast' && targetId !== 'user') ||
-                                (sourceId !== 'user' && content.length > 50);
+                                (sourceId !== 'user' && content.length > 50); // Example routing trigger
 
             if (needsRouting && targetId !== 'broadcast' && targetId !== 'user') {
                 const startCellId = (sourceId === 'user')
-                    ? Object.values(allCells).find(c => c?.isAlive)?.id
+                    ? Object.values(allCells).find(c => c?.isAlive)?.id // Find any alive cell as start
                     : sourceId;
 
                 if (!startCellId || !allCells[startCellId]?.isAlive) {
@@ -597,7 +597,8 @@ export const useNetworkStore = create(
                 }
 
                 try {
-                    const input: RouteMessageInput = { message: content, targetCellId, currentCellId: startCellId, cellExpertise, cellConnections, networkCondition: "Normal" };
+                    // Use targetId directly from the function parameter
+                    const input: RouteMessageInput = { message: content, targetCellId: targetId, currentCellId: startCellId, cellExpertise, cellConnections, networkCondition: "Normal" };
                     console.log("Calling routeMessage with:", input);
                     const result: RouteMessageOutput = await routeMessage(input);
                     console.log("routeMessage result:", result);
@@ -615,10 +616,11 @@ export const useNetworkStore = create(
                                 const start = state.cells[startCellId];
                                 if(start) _addHistoryEntry(start, {type: 'decision', text: `Routing failed to ${finalDestination} (dead). Reason: ${reasoning}`});
                             });
-                            route = undefined;
+                            route = undefined; // Clear route so it falls back to direct/broadcast
                         } else {
+                            // Queue the message with the route information
                             queueMessage({ id: messageId, sourceCellId: sourceId, targetCellId: finalDestination, content, timestamp, route });
-                            set(state => { // Update history within set
+                            set(state => { // Update history for source cell within set
                                 if (sourceId !== 'user' && state.cells[sourceId]) {
                                     _addHistoryEntry(state.cells[sourceId], { type: 'message', text: `Sent (via route): "${content.substring(0,30)}..." towards ${finalDestination}. AI Reason: ${reasoning.substring(0, 50)}` });
                                 }
@@ -648,18 +650,25 @@ export const useNetworkStore = create(
                 } catch (routingError) {
                     console.error("Error in sendMessage calling routeMessage:", routingError);
                     reasoning = "AI routing error, sending directly.";
+                     // Optionally queue an error message to the user if source was user
+                     if (sourceId === 'user') {
+                          queueMessage({ id: nanoid(), sourceCellId: 'user', targetCellId: 'user', content: `Error routing message: ${routingError instanceof Error ? routingError.message : 'Unknown error'}`, timestamp: Date.now() });
+                     }
                 }
-            }
+            } // End of routing block
 
             // --- Direct Message or Broadcast Handling (Fallback/Default) ---
+            // Use sourceId and finalTargetId from the function scope
             const newMessage: Message = { id: messageId, sourceCellId: sourceId, targetCellId: finalTargetId, content, timestamp };
             queueMessage(newMessage);
 
             set(state => {
+                // Add history entry for the sender (if not user)
                 if (sourceId !== 'user' && state.cells[sourceId]) {
                     _addHistoryEntry(state.cells[sourceId], { type: 'message', text: `Sent: "${content.substring(0,30)}..." to ${finalTargetId}. Reason: ${reasoning.substring(0,50)}` });
                 }
 
+                // Handle reception based on target
                 if (finalTargetId === 'broadcast') {
                     Object.values(state.cells).forEach(cell => {
                         if (cell?.isAlive && cell.id !== sourceId) {
@@ -681,15 +690,24 @@ export const useNetworkStore = create(
                         }
                     }
                 } else if (finalTargetId === 'user') {
+                   // Message intended for the UI (e.g., responses, errors)
                    console.log(`Message to User Interface from ${sourceId}: ${content}`);
-                   queueMessage({ id: nanoid(), sourceCellId: sourceId === 'user' ? 'user' : (state.cells[sourceId] ? sourceId : 'unknown'), targetCellId: 'user', content, timestamp: Date.now() });
+                   // The message is already queued, just ensure source is identified if possible
+                   const msgToUpdate = messagesToAdd.find(m => m.id === messageId && m.targetCellId === 'user');
+                   if (msgToUpdate && sourceId !== 'user') {
+                      msgToUpdate.sourceCellId = state.cells[sourceId] ? sourceId : 'unknown';
+                   } else if (msgToUpdate && sourceId === 'user') {
+                      msgToUpdate.sourceCellId = 'user';
+                   }
                 }
                  messagesToAdd.forEach(msg => state.messages.push(msg)); // Add queued messages
             });
 
+            // Clear messages after a delay
             setTimeout(() => { get().clearMessages(); }, 3000);
         } catch (error) {
              console.error("Unhandled error in sendMessage:", error);
+             // Generic error message to UI if initiated by user
              if (sourceId === 'user') {
                  set(state => { // Add error message for user
                      state.messages.push({ id: nanoid(), sourceCellId: 'user', targetCellId: 'user', content: `Internal error sending message: ${error instanceof Error ? error.message : 'Unknown error'}`, timestamp: Date.now() });
