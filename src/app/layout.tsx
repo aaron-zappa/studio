@@ -53,6 +53,7 @@ export default function RootLayout({
         <title>CellConnect</title>
         <meta name="description" content="AI Network Simulation" />
          {/* Link fonts if needed */}
+         {/* Favicon link removed to prevent potential build/chunking errors */}
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {/* Use the QueryProvider wrapper */}
