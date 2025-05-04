@@ -1,3 +1,4 @@
+
 export type CellId = string;
 
 export interface Cell {
@@ -15,12 +16,17 @@ export interface Cell {
   dbFilePath?: string; // Path to persisted SQLite file
 }
 
-export interface HistoryEntry {
+// Data needed to create a history entry (age and timestamp are added automatically)
+export interface HistoryEntryData {
+    type: 'decision' | 'message' | 'clone' | 'death' | 'init';
+    text: string;
+}
+
+
+export interface HistoryEntry extends HistoryEntryData {
   seq: number;
-  type: 'decision' | 'message' | 'clone' | 'death' | 'init'; // Added event types
   age: number;
-  text: string;
-  timestamp: number; // Added timestamp
+  timestamp: number;
 }
 
 export interface Message {
