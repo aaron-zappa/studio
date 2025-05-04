@@ -24,7 +24,7 @@ const MAX_AGE = 99;
 const MAX_CELLS = 100; // Limit the number of cells for performance
 const GRID_SIZE = 500; // Size of the visualization area
 const CLONE_DISTANCE_THRESHOLD = 50; // Min distance between parent and clone
-const MOVE_STEP = 20; // Increased movement step further
+const MOVE_STEP = 30; // Increased movement step further
 const POSITION_HISTORY_LIMIT = 15; // Store the last 15 positions for trails
 const MAX_HISTORY = 100; // Max history entries per cell
 
@@ -701,19 +701,22 @@ export const useNetworkStore = create(
 
     askForHelp: async (requestingCellId: CellId, requestText: string) => {
         try {
-            let requestingCell: Cell | undefined = get().getCellById(requestingCellId);
+            let requestingCell: Cell | undefined;
+
+            // Add initial history entry within a `set` call
+            set(state => {
+                 requestingCell = state.cells[requestingCellId]; // Get cell from draft
+                 if(requestingCell) _addHistoryEntry(requestingCell, { type: 'message', text: `Asking neighbors for help: "${requestText}"` });
+                 else console.warn(`askForHelp initial history: Requesting cell ${requestingCellId} not found.`);
+            });
+
+             // Refresh requestingCell from the latest state *after* the set call
+             requestingCell = get().getCellById(requestingCellId);
 
             if (!requestingCell || !requestingCell.isAlive) {
                  console.warn(`askForHelp: Requesting cell ${requestingCellId} not found or dead.`);
                  return;
             }
-
-            // Add initial history entry within a `set` call
-            set(state => {
-                 const cell = state.cells[requestingCellId];
-                 if(cell) _addHistoryEntry(cell, { type: 'message', text: `Asking neighbors for help: "${requestText}"` });
-            });
-
 
             const neighbors = get().getNeighbors(requestingCellId, 150);
             const neighborExpertise = neighbors
@@ -758,6 +761,7 @@ export const useNetworkStore = create(
                             if (cell && expertCell?.isAlive && !cell.likedCells.includes(expert.cellId)) {
                                 cell.likedCells.push(expert.cellId);
                                 _addHistoryEntry(cell, { type: 'decision', text: `Liked cell ${expert.cellId} for potential help.` });
+                                cell.version = (cell.version ?? 0) + 1; // Update version
                             } else if (cell && expertCell && !expertCell.isAlive) {
                                 _addHistoryEntry(cell, { type: 'decision', text: `AI suggested help from ${expert.cellId}, but it is no longer alive.` });
                             }
@@ -997,3 +1001,4 @@ if (typeof window !== 'undefined') {
     window.addEventListener('beforeunload', stopAutoTick);
 }
 
+    
