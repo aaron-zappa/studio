@@ -1,6 +1,4 @@
 
-
-
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -13,11 +11,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { startAutoTick, stopAutoTick } from '@/hooks/useNetworkStore';
+import { Badge, badgeVariants } from '@/components/ui/badge';
+import { startAutoTick, stopAutoTick, MAX_CELLS } from '@/hooks/useNetworkStore'; // Import MAX_CELLS
 import { Slider } from '@/components/ui/slider';
-import { AlertCircle, Bot, BrainCircuit, Clock, HelpCircle, MessageSquare, Plus, Send, Trash2, Zap, Milestone, ListTree, Target, History, User, RefreshCw, BedDouble, ScanLine, Thermometer, BarChart, Waves, Wind, Lightbulb, Droplet, Rss, Eye, Ear, Paintbrush } from 'lucide-react'; // Added Sensor Icons & Paintbrush
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Added Select
+import { AlertCircle, Bot, BrainCircuit, Clock, HelpCircle, MessageSquare, Plus, Send, Trash2, Zap, Milestone, ListTree, Target, History, User, RefreshCw, BedDouble, ScanLine, Thermometer, BarChart, Waves, Wind, Lightbulb, Droplet, Rss, Eye, Ear, Paintbrush, MinusSquare } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Sidebar,
   SidebarContent,
@@ -32,16 +30,19 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
+import type { CellId } from '@/types';
+import { cn } from '@/lib/utils';
+
 
 // Define sensor types
 const sensorTypes = [
     { value: 'Temperature Sensor', label: 'Temperature', icon: Thermometer },
-    { value: 'Pressure Sensor', label: 'Pressure', icon: BarChart }, // Using BarChart as proxy
+    { value: 'Pressure Sensor', label: 'Pressure', icon: BarChart },
     { value: 'Humidity Sensor', label: 'Humidity', icon: Droplet },
     { value: 'Light Sensor', label: 'Light', icon: Lightbulb },
-    { value: 'Motion Sensor', label: 'Motion', icon: Eye }, // Using Eye as proxy
-    { value: 'Sound Sensor', label: 'Sound', icon: Ear }, // Using Ear as proxy
-    { value: 'Gas Sensor', label: 'Gas', icon: Wind }, // Using Wind as proxy
+    { value: 'Motion Sensor', label: 'Motion', icon: Eye },
+    { value: 'Sound Sensor', label: 'Sound', icon: Ear },
+    { value: 'Gas Sensor', label: 'Gas', icon: Wind },
     { value: 'Proximity Sensor', label: 'Proximity', icon: ScanLine },
     { value: 'Flow Sensor', label: 'Flow', icon: Waves },
     { value: 'Signal Sensor', label: 'Signal', icon: Rss },
@@ -62,6 +63,7 @@ export const ControlPanel: React.FC = () => {
     selectCell,
     getCellById,
     cells,
+    reduceCellAge,
   } = useNetworkStore((state) => ({
     initializeNetwork: state.initializeNetwork,
     setPurpose: state.setPurpose,
@@ -75,32 +77,30 @@ export const ControlPanel: React.FC = () => {
     selectCell: state.selectCell,
     getCellById: state.getCellById,
     cells: state.cells,
+    reduceCellAge: state.reduceCellAge,
   }));
     const { toast } = useToast();
 
-  const [networkSize, setNetworkSize] = useState(10); // Default to 10 initial cells
+  const [networkSize, setNetworkSize] = useState(10);
   const [messageContent, setMessageContent] = useState('');
-  const [targetCellId, setTargetCellId] = useState<'broadcast' | 'user' | string>('broadcast');
+  const [targetCellId, setTargetCellId] = useState<'broadcast' | 'user' | CellId>('broadcast');
   const [helpRequestText, setHelpRequestText] = useState('');
-  const [isAutoTicking, setIsAutoTicking] = useState(true); // Assume auto-tick starts by default
+  const [isAutoTicking, setIsAutoTicking] = useState(true);
   const [newPurpose, setNewPurpose] = useState(purpose);
-  const [isSettingPurpose, setIsSettingPurpose] = useState(false); // Loading state for purpose setting
+  const [isSettingPurpose, setIsSettingPurpose] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [isAskingForHelp, setIsAskingForHelp] = useState(false);
-  const [customRole, setCustomRole] = useState(''); // State for custom role input
-  const [selectedSensorType, setSelectedSensorType] = useState<string | undefined>(undefined); // State for selected sensor type
+  const [customRole, setCustomRole] = useState('');
+  const [selectedSensorType, setSelectedSensorType] = useState<string | undefined>(undefined);
+  const [ageReductionAmount, setAgeReductionAmount] = useState<number>(10);
 
 
   const selectedCell = selectedCellId ? getCellById(selectedCellId) : null;
 
-  // Effect to check initial auto-tick status from the store if needed
-  // (Currently assumes it starts on by default)
-
   useEffect(() => {
-    setNewPurpose(purpose); // Sync local state if global purpose changes externally
+    setNewPurpose(purpose);
   }, [purpose]);
 
-   // Reset sensor type when custom role changes from 'Sensor'
    useEffect(() => {
        if (customRole.trim().toLowerCase() !== 'sensor') {
            setSelectedSensorType(undefined);
@@ -110,7 +110,7 @@ export const ControlPanel: React.FC = () => {
 
   const handleInitialize = () => {
     initializeNetwork(networkSize);
-    selectCell(null); // Deselect any cell on re-init
+    selectCell(null);
     toast({ title: "Network Initialized", description: `Created ${networkSize} cells.` });
   };
 
@@ -143,12 +143,11 @@ export const ControlPanel: React.FC = () => {
     let source: string | 'user' = 'user';
     let target = targetCellId;
 
-    // Simplified logic: Control panel always sends from 'user'
     try {
         await sendMessage(source, target, contentToSend);
         toast({ title: "Message Sent", description: `To: ${target === 'broadcast' ? 'All Cells' : (target === 'user' ? 'User Interface' : `Cell ${target.substring(0,6)}...`)}` });
         if (!overrideContent) {
-             setMessageContent(''); // Clear input only if not using override content
+             setMessageContent('');
         }
     } catch (error) {
         console.error("Failed to send message:", error);
@@ -168,7 +167,7 @@ export const ControlPanel: React.FC = () => {
     try {
         await askForHelp(selectedCellId, helpRequestText);
         toast({ title: "Help Request Sent", description: `Cell ${selectedCellId.substring(0,6)} asked for help.` });
-        setHelpRequestText(''); // Clear input after successful request
+        setHelpRequestText('');
     } catch (error) {
         console.error("Failed to ask for help:", error);
         const errorMessage = error instanceof Error ? error.message : "Could not send help request.";
@@ -208,22 +207,21 @@ export const ControlPanel: React.FC = () => {
     if (roleInput) {
         if (roleInput.toLowerCase() === 'sensor') {
              if (selectedSensorType) {
-                 expertiseToAdd = selectedSensorType; // Use selected sensor type
+                 expertiseToAdd = selectedSensorType;
              } else {
                  toast({ title: "Error", description: "Please select a sensor type.", variant: "destructive" });
-                 return; // Don't add cell if 'Sensor' is typed but no type is selected
+                 return;
              }
         } else {
-            expertiseToAdd = roleInput; // Use the custom typed role
+            expertiseToAdd = roleInput;
         }
     }
-    // If no custom role is specified (or 'Sensor' was typed but type wasn't selected yet),
-    // the addCell action in the store will use its default "next role" logic.
 
-    addCell(undefined, expertiseToAdd); // Pass undefined parent, optional expertise
+
+    addCell(undefined, expertiseToAdd);
     toast({ title: "Cell Added", description: expertiseToAdd ? `Added with expertise: ${expertiseToAdd}` : "Added with next available role." });
-    setCustomRole(''); // Clear custom role input after adding
-    setSelectedSensorType(undefined); // Clear selected sensor type
+    setCustomRole('');
+    setSelectedSensorType(undefined);
   };
 
   const handleRemoveCell = () => {
@@ -238,12 +236,26 @@ export const ControlPanel: React.FC = () => {
 
   const handleCloneCell = () => {
       if(selectedCellId && selectedCell?.status === 'active') {
-          addCell(selectedCellId); // Pass parent ID for cloning
+          addCell(selectedCellId);
            toast({ title: "Cell Cloned", description: `Created clone of Cell ${selectedCellId.substring(0,6)}.` });
       } else {
           toast({ title: "Error", description: "Select an active cell to clone.", variant: "destructive" });
       }
   }
+
+   const handleReduceAge = () => {
+        if (selectedCellId && selectedCell?.isAlive) {
+            const amount = ageReductionAmount;
+            if (amount > 0) {
+                reduceCellAge(selectedCellId, amount);
+                toast({ title: "Cell Age Reduced", description: `Reduced age of Cell ${selectedCellId.substring(0,6)} by ${amount}.` });
+            } else {
+                toast({ title: "Error", description: "Age reduction amount must be positive.", variant: "destructive" });
+            }
+        } else {
+            toast({ title: "Error", description: "Select an alive cell to reduce its age.", variant: "destructive" });
+        }
+   };
 
    const getStatusBadgeVariant = (status: 'active' | 'sleeping' | 'dead') => {
        switch (status) {
@@ -309,7 +321,7 @@ export const ControlPanel: React.FC = () => {
                     <Slider
                       id="network-size"
                       min={1}
-                      max={MAX_CELLS} // Use constant
+                      max={MAX_CELLS}
                       step={1}
                       value={[networkSize]}
                       onValueChange={(value) => setNetworkSize(value[0])}
@@ -389,6 +401,27 @@ export const ControlPanel: React.FC = () => {
 
                         <Separator className="my-3" />
 
+                         {/* Reduce Age Section */}
+                         <div className="space-y-2">
+                            <Label htmlFor="reduce-age-amount">Reduce Age By</Label>
+                            <div className="flex gap-2">
+                                <Input
+                                    id="reduce-age-amount"
+                                    type="number"
+                                    min="1"
+                                    value={ageReductionAmount}
+                                    onChange={(e) => setAgeReductionAmount(Math.max(1, parseInt(e.target.value) || 1))}
+                                    className="flex-1"
+                                    disabled={!selectedCell?.isAlive}
+                                />
+                                <Button onClick={handleReduceAge} size="sm" variant="outline" disabled={!selectedCell?.isAlive}>
+                                    <MinusSquare className="mr-2 size-4" /> Reduce
+                                </Button>
+                            </div>
+                         </div>
+
+                        <Separator className="my-3" />
+
                         <Label htmlFor="help-request">Ask Neighbors for Help:</Label>
                         <Textarea
                             id="help-request"
@@ -418,11 +451,12 @@ export const ControlPanel: React.FC = () => {
                          <h4 className="font-medium flex items-center gap-2"><History className="size-4"/>History ({selectedCell.history.length})</h4>
                          <ScrollArea className="h-40 w-full rounded-md border p-2 text-xs bg-muted/30">
                             {selectedCell.history.length === 0 && <span className="text-muted-foreground italic">No history yet.</span>}
-                             {selectedCell.history.slice().reverse().map(entry => ( // Reverse for newest first
+                             {selectedCell.history.slice().reverse().map(entry => (
                                  <div key={entry.seq} className="mb-1.5 leading-relaxed">
                                      <span className="text-muted-foreground mr-1">[{entry.age}]</span>
-                                     <Badge variant="outline" className="mr-1.5 text-[10px] capitalize px-1.5 py-0 align-middle">{entry.type}</Badge>
-                                      <span className="break-words">{entry.text}</span> {/* Ensure text wraps */}
+                                     {/* Use span with badgeVariants classes instead of div */}
+                                     <span className={cn(badgeVariants({ variant: 'outline' }), 'mr-1.5 text-[10px] capitalize px-1.5 py-0 align-middle')}>{entry.type}</span>
+                                     <span className="break-words">{entry.text}</span>
                                  </div>
                              ))}
                          </ScrollArea>
@@ -467,7 +501,7 @@ export const ControlPanel: React.FC = () => {
                                 ))}
                              </optgroup>
                             <optgroup label="Dead Cells (Inspect Only)">
-                                {Object.values(cells).filter(c => c && !c.isAlive).sort((a,b) => a.id.localeCompare(b.id)).map(cell => ( // Add null check
+                                {Object.values(cells).filter(c => c && !c.isAlive).sort((a,b) => a.id.localeCompare(b.id)).map(cell => (
                                      <option key={cell.id} value={cell.id} disabled>
                                         Cell {cell.id.substring(0, 6)} (Dead)
                                      </option>
@@ -513,3 +547,5 @@ export const ControlPanel: React.FC = () => {
     </>
   );
 };
+
+```
