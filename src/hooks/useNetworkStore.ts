@@ -22,7 +22,8 @@ const MAX_AGE = 99;
 const MAX_CELLS = 100; // Limit the number of cells for performance
 const GRID_SIZE = 500; // Size of the visualization area
 const CLONE_DISTANCE_THRESHOLD = 50; // Min distance between parent and clone
-const MOVE_STEP = 20; // How much cells move per tick towards liked cells (increased from 10)
+const MOVE_STEP = 40; // Increased movement step
+const POSITION_HISTORY_LIMIT = 15; // Store the last 15 positions for trails
 
 // --- Helper Functions ---
 
@@ -38,7 +39,6 @@ const predefinedRoles = [
     { expertise: 'Resource Allocator', goal: 'Distribute energy or computational resources efficiently'},
     { expertise: 'Predictive Modeler', goal: 'Forecast future network states based on current trends'},
     { expertise: 'User Interface Liaison', goal: 'Format data and responses for user interaction'},
-    // Add more roles up to 100 if needed
     { expertise: 'Data Validator', goal: 'Verify the integrity and accuracy of collected data' },
     { expertise: 'Data Summarizer', goal: 'Condense large datasets into concise summaries' },
     { expertise: 'Report Generator', goal: 'Create reports based on analyzed data and findings' },
@@ -260,6 +260,7 @@ export const useNetworkStore = create(
             expertise: role.expertise, // Assign unique expertise
             goal: role.goal,           // Assign unique goal
             position,
+            positionHistory: [position], // Initialize position history
             isAlive: true,
             version: 1,
             likedCells: [],
@@ -385,6 +386,7 @@ export const useNetworkStore = create(
                 expertise: assignedRole.expertise,
                 goal: assignedRole.goal,
                 position,
+                positionHistory: [position], // Initialize position history
                 isAlive: true,
                 version: 1,
                 likedCells: parentCell ? [parentCellId] : [],
@@ -456,7 +458,7 @@ export const useNetworkStore = create(
                     // Send error message back to user if source was user
                     if (sourceId === 'user') {
                         set(state => {
-                            state.messages.push({ id: messageId, sourceCellId: 'network', targetCellId: 'user', content: `Error: Could not find a live cell to start routing message to ${targetId}`, timestamp });
+                            state.messages.push({ id: messageId, sourceCellId: 'user', targetCellId: 'user', content: `Error: Could not find a live cell to start routing message to ${targetId}`, timestamp });
                         });
                     }
                     return;
@@ -503,7 +505,10 @@ export const useNetworkStore = create(
                             // Process message reception along the route
                             let stopPropagation = false; // Flag to stop if a target is dead
                             for (let i = 0; i < route.length - 1; i++) {
-                                if (stopPropagation) break; // Stop if flag is set
+                                if (stopPropagation) {
+                                    // Stop processing further along this route
+                                    break; // Exit the loop
+                                }
 
                                 const hopSourceId = route[i];
                                 const hopTargetId = route[i+1];
@@ -519,7 +524,6 @@ export const useNetworkStore = create(
                                         }
                                     } else {
                                          console.warn(`Route hop target ${hopTargetId} is dead. Stopping message propagation.`);
-                                         // Stop processing further along this route
                                          stopPropagation = true; // Set the flag here
                                     }
                                 });
@@ -572,7 +576,7 @@ export const useNetworkStore = create(
                         console.warn(`Direct message target ${finalTargetId} is not alive. Message dropped.`);
                         if (sourceId === 'user') {
                             // Inform user if their direct message target was dead
-                             state.messages.push({ id: nanoid(), sourceCellId: 'network', targetCellId: 'user', content: `Error: Target cell ${finalTargetId.substring(0,6)} is not responding (dead).`, timestamp: Date.now() });
+                             state.messages.push({ id: nanoid(), sourceCellId: 'user', targetCellId: 'user', content: `Error: Target cell ${finalTargetId.substring(0,6)} is not responding (dead).`, timestamp: Date.now() });
                         } else if (state.cells[sourceId]) {
                             addHistoryEntry(state.cells[sourceId], 'decision', `Message to ${finalTargetId} failed (target dead).`);
                         }
@@ -580,7 +584,7 @@ export const useNetworkStore = create(
                 } else if (finalTargetId === 'user') {
                    console.log(`Message to User Interface from ${sourceId}: ${content}`);
                     // Optionally display user-targeted messages in UI - currently logged
-                     state.messages.push({ id: nanoid(), sourceCellId: sourceId === 'user' ? 'self' : (state.cells[sourceId] ? sourceId : 'network'), targetCellId: 'user', content, timestamp: Date.now() });
+                     state.messages.push({ id: nanoid(), sourceCellId: sourceId === 'user' ? 'user' : (state.cells[sourceId] ? sourceId : 'user'), targetCellId: 'user', content, timestamp: Date.now() });
                 }
             });
 
@@ -592,7 +596,7 @@ export const useNetworkStore = create(
              // Optionally, notify the user via toast or console
              if (sourceId === 'user') {
                  set(state => {
-                     state.messages.push({ id: nanoid(), sourceCellId: 'network', targetCellId: 'user', content: `Internal error sending message: ${error instanceof Error ? error.message : 'Unknown error'}`, timestamp: Date.now() });
+                     state.messages.push({ id: nanoid(), sourceCellId: 'user', targetCellId: 'user', content: `Internal error sending message: ${error instanceof Error ? error.message : 'Unknown error'}`, timestamp: Date.now() });
                  });
              }
         }
@@ -710,14 +714,13 @@ export const useNetworkStore = create(
                     const attractDY = avgY - cell.position.y;
                     const attractDist = Math.sqrt(attractDX * attractDX + attractDY * attractDY);
 
-                    if (attractDist > MOVE_STEP) {
-                         moveX += (attractDX / attractDist) * MOVE_STEP;
-                         moveY += (attractDY / attractDist) * MOVE_STEP;
+                    if (attractDist > MOVE_STEP / 2) { // Only move if distance is significant compared to step
+                         moveX += (attractDX / attractDist) * (MOVE_STEP * 0.5); // Attraction is weaker
                          moved = true;
                     }
                 }
 
-                 if (moved || repulsionX !== 0 || repulsionY !== 0) {
+                 if (moved || Math.abs(repulsionX) > 0.1 || Math.abs(repulsionY) > 0.1) {
                      const totalMoveDist = Math.sqrt(moveX * moveX + moveY * moveY);
                      if (totalMoveDist > MOVE_STEP) {
                          moveX = (moveX / totalMoveDist) * MOVE_STEP;
@@ -729,6 +732,13 @@ export const useNetworkStore = create(
 
                      cell.position.x = Math.max(10, Math.min(GRID_SIZE - 10, newX));
                      cell.position.y = Math.max(10, Math.min(GRID_SIZE - 10, newY));
+
+                     // Update position history
+                     cell.positionHistory.push({ x: cell.position.x, y: cell.position.y });
+                     if (cell.positionHistory.length > POSITION_HISTORY_LIMIT) {
+                         cell.positionHistory.shift(); // Remove the oldest position
+                     }
+
                      cell.version += 1;
                  }
 

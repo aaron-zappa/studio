@@ -97,17 +97,39 @@ const ConnectionLine: React.FC<ConnectionLineProps> = memo(({ source, target, is
 });
 ConnectionLine.displayName = 'ConnectionLine';
 
+// --- Movement Trail Component ---
+interface MovementTrailProps {
+  positions: { x: number; y: number }[];
+}
+
+const MovementTrail: React.FC<MovementTrailProps> = memo(({ positions }) => {
+  if (positions.length < 2) return null;
+
+  const points = positions.map(p => `${p.x},${p.y}`).join(' ');
+
+  return (
+    <polyline
+      points={points}
+      className="fill-none stroke-muted-foreground opacity-30"
+      strokeWidth="1"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  );
+});
+MovementTrail.displayName = 'MovementTrail';
+
 
 // --- Network Visualization Component ---
 export const NetworkVisualization: React.FC = () => {
-    const cells = useNetworkStore((state) => Object.values(state.cells));
+    const cells = useNetworkStore((state) => Object.values(state.cells).filter((c): c is Cell => !!c)); // Filter out undefined cells
     const messages = useNetworkStore((state) => state.messages);
     const getCellById = useNetworkStore((state) => state.getCellById);
 
     // Optimization: Use versions to trigger re-renders only when necessary cell data changes
     // This creates a dependency array based on cell versions and positions
     const cellDependencies = useMemo(() => {
-        return cells.map(c => `${c.id}-${c.version}-${c.position.x}-${c.position.y}-${c.isAlive}-${c.age}`).join(',');
+        return cells.map(c => `${c.id}-${c.version}-${c.position.x}-${c.position.y}-${c.isAlive}-${c.age}-${c.positionHistory.length}`).join(',');
     }, [cells]);
 
     const messageDependencies = useMemo(() => {
@@ -121,6 +143,16 @@ export const NetworkVisualization: React.FC = () => {
         ));
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cellDependencies]); // Re-render only when cell versions/positions/status/age change
+
+     const movementTrails = useMemo(() => {
+        console.log("Recalculating movement trails...");
+        return cells
+            .filter(cell => cell.isAlive && cell.positionHistory && cell.positionHistory.length > 1)
+            .map(cell => (
+                <MovementTrail key={`trail-${cell.id}`} positions={cell.positionHistory} />
+            ));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [cellDependencies]); // Re-render when cell positions change
 
     const edges = useMemo(() => {
         console.log("Recalculating edges..."); // Debug log
@@ -222,6 +254,8 @@ export const NetworkVisualization: React.FC = () => {
                 <path d="M 0 0 L 10 5 L 0 10 z" />
             </marker>
          </defs>
+         {/* Render movement trails first so they are behind other elements */}
+         {movementTrails}
         {edges}
       </svg>
       {nodes}

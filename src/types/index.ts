@@ -6,6 +6,7 @@ export interface Cell {
   expertise: string;
   goal: string; // Added goal property
   position: { x: number; y: number };
+  positionHistory: { x: number; y: number }[]; // Added to track movement
   isAlive: boolean;
   version: number; // Added version property
   likedCells: CellId[]; // Added likedCells property
@@ -24,7 +25,7 @@ export interface HistoryEntry {
 
 export interface Message {
   id: string;
-  sourceCellId: CellId;
+  sourceCellId: CellId | 'user'; // Removed broadcast/user from source
   targetCellId: CellId | 'broadcast' | 'user'; // Added 'user' target
   content: string;
   timestamp: number;
@@ -32,7 +33,7 @@ export interface Message {
 }
 
 export interface NetworkState {
-  cells: Record<CellId, Cell>;
+  cells: Record<CellId, Cell | undefined>; // Allow undefined for deleted cells during transition
   messages: Message[];
   tickCount: number; // Added tick count for overall network time
   purpose: string; // Added network purpose
