@@ -28,13 +28,16 @@ const MOVE_STEP = 10; // How much cells move per tick towards liked cells
 
 // Predefined roles for initialization
 const predefinedRoles = [
-    { expertise: 'Data Collector', goal: 'Gather information from the network' },
-    { expertise: 'Analyzer', goal: 'Process and interpret collected data' },
-    { expertise: 'Router', goal: 'Direct messages efficiently to their destination' },
-    { expertise: 'Communicator', goal: 'Share findings and insights with other cells' },
-    { expertise: 'Memory Unit', goal: 'Store and retrieve important information' },
-    { expertise: 'Coordinator', goal: 'Orchestrate tasks among specialized cells' },
-    { expertise: 'Security Monitor', goal: 'Detect anomalies and potential threats' },
+    { expertise: 'Data Collector', goal: 'Gather information from sensors and network messages' },
+    { expertise: 'Data Analyzer', goal: 'Process raw data to find patterns and anomalies' },
+    { expertise: 'Task Router', goal: 'Direct incoming tasks to the appropriate specialist cell' },
+    { expertise: 'Network Communicator', goal: 'Relay important findings between cell groups' },
+    { expertise: 'Long-Term Memory', goal: 'Store and retrieve historical data for context' },
+    { expertise: 'System Coordinator', goal: 'Oversee network health and resource allocation' },
+    { expertise: 'Security Monitor', goal: 'Detect and report potential intrusions or malfunctions' },
+    { expertise: 'Resource Allocator', goal: 'Distribute energy or computational resources efficiently'},
+    { expertise: 'Predictive Modeler', goal: 'Forecast future network states based on current trends'},
+    { expertise: 'User Interface Liaison', goal: 'Format data and responses for user interaction'},
 ];
 
 
@@ -154,11 +157,13 @@ export const useNetworkStore = create(
         state.tickCount = 0;
         state.selectedCellId = null;
         const initialPositions: { x: number; y: number }[] = [];
-        for (let i = 0; i < count && i < MAX_CELLS; i++) {
+        const numCells = Math.min(count, MAX_CELLS, predefinedRoles.length); // Ensure we don't exceed max cells or roles
+
+        for (let i = 0; i < numCells; i++) {
           const id = nanoid(8);
           const position = getRandomPosition(initialPositions);
           initialPositions.push(position);
-          const role = predefinedRoles[i % predefinedRoles.length]; // Assign roles cyclically
+          const role = predefinedRoles[i]; // Assign roles sequentially from the unique list
           const newCell: Cell = {
             id,
             age: 0,
@@ -174,11 +179,11 @@ export const useNetworkStore = create(
           addHistoryEntry(newCell, 'init', `Initialized with Expertise: ${newCell.expertise}, Goal: ${newCell.goal}`);
           state.cells[id] = newCell;
         }
-        // Update overall purpose based on initialized cells (optional)
-        // state.purpose = `Network initialized with cells focused on: ${predefinedRoles.slice(0, count).map(r => r.expertise).join(', ')}`;
+         // Update overall purpose based on initialized cells
+         state.purpose = `Network initialized with ${numCells} specialized cells.`;
       });
-      // Optionally set initial purpose after initialization
-      // get().setPurpose(get().purpose);
+      // Optionally trigger AI reconfig based on initial setup?
+      // get().setPurpose(get().purpose); // Might be redundant if handled by init
     },
 
     setPurpose: async (purpose) => {
@@ -186,59 +191,26 @@ export const useNetworkStore = create(
         set(state => { state.purpose = purpose });
         try {
             const input: CellPurposeUnderstandingInput = { purpose };
-            // Call AI - Note: In a real app, handle potential errors gracefully
+            // Call AI Server Action
             const result: CellPurposeUnderstandingOutput = await cellPurposeUnderstanding(input);
 
             set(state => {
                 state.purpose = purpose; // Update purpose again in case of async delay
                 // Apply initialization instructions (simplified example)
                 // In a real scenario, parse 'result.initializationInstructions' more robustly
-                const instructions = result.initializationInstructions.toLowerCase();
-                let roleIndex = 0;
-                Object.values(state.cells).forEach(cell => {
-                    if (!cell.isAlive) return;
-                    let updated = false;
-                     // Use AI instructions to guide role assignment, fallback to cycling predefined roles
-                    if (instructions.includes('data analysis') && roleIndex === 0) {
-                        cell.expertise = 'Data Analysis'; cell.goal = 'Analyze incoming data streams'; updated = true;
-                    } else if ((instructions.includes('communication') || instructions.includes('routing')) && roleIndex === 1) {
-                        cell.expertise = 'Communication Hub'; cell.goal = 'Facilitate message routing'; updated = true;
-                    } else if (instructions.includes('memory') && roleIndex === 2) {
-                        cell.expertise = 'Memory Unit'; cell.goal = 'Store critical information'; updated = true;
-                    } else {
-                         // Fallback to cycling through predefined roles if instructions are vague or already used
-                         const assignedRole = predefinedRoles[roleIndex % predefinedRoles.length];
-                         if(cell.expertise !== assignedRole.expertise || cell.goal !== assignedRole.goal) {
-                             cell.expertise = assignedRole.expertise;
-                             cell.goal = assignedRole.goal;
-                             updated = true;
-                         }
-                    }
-                     roleIndex++;
-
-                    if(updated) {
-                        addHistoryEntry(cell, 'decision', `Purpose updated. New Expertise: ${cell.expertise}, Goal: ${cell.goal}`);
-                    }
-                });
-                console.log("Applied AI Purpose Initialization:", result.initializationInstructions);
+                // For now, let's just log it and assume roles are generally set well enough by init/AI.
+                console.log("AI Proposed Initialization Instructions:", result.initializationInstructions);
+                // Potentially add a history entry to a global log or a designated "coordinator" cell if one exists.
             });
         } catch (error) {
             console.error("Error setting purpose with AI:", error);
-            // Handle error (e.g., show a message to the user)
-            // Fallback: assign roles manually if AI fails
+            // Fallback or notify user
             set(state => {
-                 let roleIndex = 0;
-                 Object.values(state.cells).forEach(cell => {
-                     if (!cell.isAlive) return;
-                     const assignedRole = predefinedRoles[roleIndex % predefinedRoles.length];
-                      if(cell.expertise !== assignedRole.expertise || cell.goal !== assignedRole.goal) {
-                           cell.expertise = assignedRole.expertise;
-                           cell.goal = assignedRole.goal;
-                          addHistoryEntry(cell, 'decision', `AI failed. Assigned Expertise: ${cell.expertise}, Goal: ${cell.goal}`);
-                      }
-                     roleIndex++;
-                 });
-            });
+                // Add error note to purpose or log?
+                 state.purpose += " (AI config failed)";
+            })
+            // Rethrow or handle the error to inform the caller (e.g., control panel)
+            throw new Error(`Failed to set network purpose via AI: ${error instanceof Error ? error.message : String(error)}`);
         }
     },
 
@@ -290,16 +262,39 @@ export const useNetworkStore = create(
                 ? getClonedPosition(parentCell.position, existingPositions)
                 : getRandomPosition(existingPositions);
 
-            // Assign a role to the new cell, try not to duplicate expertise too much initially if random
-            const role = parentCell
-                ? { expertise: parentCell.expertise, goal: parentCell.goal } // Clones inherit parent's role
-                : predefinedRoles[Object.keys(state.cells).length % predefinedRoles.length]; // Cycle for new random cells
+            // Assign a role to the new cell
+            // Try to find a role not currently well-represented, otherwise fallback to parent or cycle
+            let assignedRole: { expertise: string; goal: string; } | undefined = undefined;
+            if (parentCell) {
+                assignedRole = { expertise: parentCell.expertise, goal: parentCell.goal }; // Clones inherit parent's role
+            } else {
+                const currentExpertiseCounts = Object.values(state.cells).reduce((acc, cell) => {
+                    acc[cell.expertise] = (acc[cell.expertise] || 0) + 1;
+                    return acc;
+                }, {} as Record<string, number>);
+
+                // Find a predefined role with 0 or the minimum count
+                let minCount = Infinity;
+                for (const role of predefinedRoles) {
+                    const count = currentExpertiseCounts[role.expertise] || 0;
+                    if (count < minCount) {
+                        minCount = count;
+                        assignedRole = role;
+                    }
+                    if (count === 0) break; // Prefer unused roles first
+                }
+                // Fallback if all roles are used somehow
+                 if (!assignedRole) {
+                    assignedRole = predefinedRoles[Object.keys(state.cells).length % predefinedRoles.length];
+                 }
+            }
+
 
             const newCell: Cell = {
                 id: newCellId,
                 age: 0,
-                expertise: role.expertise,
-                goal: role.goal,
+                expertise: assignedRole!.expertise, // Use the determined role
+                goal: assignedRole!.goal,
                 position,
                 isAlive: true,
                 version: 1,
@@ -324,7 +319,7 @@ export const useNetworkStore = create(
             }
 
             state.cells[newCellId] = newCell;
-            console.log(`Added cell ${newCellId} ${parentCell ? 'cloned from ' + parentCellId : ''} with role ${role.expertise}`);
+            console.log(`Added cell ${newCellId} ${parentCell ? 'cloned from ' + parentCellId : ''} with role ${assignedRole!.expertise}`);
         });
     },
 
@@ -423,14 +418,15 @@ export const useNetworkStore = create(
                      });
 
                       // Simulate sending along the path (logging in each cell)
-                      for (let i = 0; < route.length - 1; i++) {
+                      for (let i = 0; i < route.length - 1; i++) {
                           const hopSourceId = route[i];
                           const hopTargetId = route[i+1];
                           set(state => {
                               const hopSourceCell = state.cells[hopSourceId];
                               const hopTargetCell = state.cells[hopTargetId];
                               if (hopSourceCell?.isAlive) {
-                                  addHistoryEntry(hopSourceCell, 'message', `Relaying message "${content.substring(0, 20)}..." to ${hopTargetId}`);
+                                  // Avoid overly verbose logging for relays
+                                  // addHistoryEntry(hopSourceCell, 'message', `Relaying message "${content.substring(0, 20)}..." to ${hopTargetId}`);
                               }
                                if (hopTargetCell?.isAlive) {
                                   addHistoryEntry(hopTargetCell, 'message', `Received message "${content.substring(0, 20)}..." from ${hopSourceId}`);
@@ -486,7 +482,7 @@ export const useNetworkStore = create(
              } else if (finalTargetId !== 'user' && state.cells[finalTargetId]?.isAlive) {
                  const targetCell = state.cells[finalTargetId];
                  addHistoryEntry(targetCell, 'message', `Received from ${sourceId}: "${content}"`);
-                 handleMessageReception(targetCell, sourceId, content);
+                 handleMessageReception(targetCell, finalTargetId === sourceId ? 'self' : sourceId, content); // Pass 'self' if source is target
              } else if (finalTargetId === 'user') {
                 // Log message intended for the user interface (e.g., display in a chat window)
                 console.log(`Message to User from ${sourceId}: ${content}`);
@@ -703,20 +699,26 @@ export const useNetworkStore = create(
 
 
 // --- Internal Helper for Message Handling ---
-const handleMessageReception = (targetCell: Cell, sourceId: CellId | 'user', content: string) => {
-     // Simple "purpose?" query handling
+const handleMessageReception = (targetCell: Cell, sourceId: CellId | 'user' | 'self', content: string) => {
+     // Handle "purpose?" query specifically
      if (content.toLowerCase().trim() === 'purpose?') {
-         const response = `My purpose is: ${targetCell.goal} (Expertise: ${targetCell.expertise})`;
+         const response = `My purpose is: ${targetCell.goal}. My expertise is in: ${targetCell.expertise}.`;
          addHistoryEntry(targetCell, 'message', `Responding to purpose query from ${sourceId}.`);
-         // Send response back to source (or user)
-         useNetworkStore.getState().sendMessage(targetCell.id, sourceId, response);
-         return; // Don't process further if it was just a purpose query
+         // Ensure sourceId is a valid CellId before sending response
+         if (sourceId !== 'user' && sourceId !== 'self' && useNetworkStore.getState().cells[sourceId]) {
+             useNetworkStore.getState().sendMessage(targetCell.id, sourceId, response);
+         } else if (sourceId === 'user') {
+             // If the user asked, send the response back to the user interface target
+             useNetworkStore.getState().sendMessage(targetCell.id, 'user', response);
+         }
+         return; // Stop further processing for this specific query
      }
 
 
     // Generic positive/negative reaction (example)
     const lowerContent = content.toLowerCase();
-    if (sourceId !== 'user') { // Cells don't react emotionally to the 'user'
+    // Cells react to each other, but not 'user' or 'self' messages in this way
+    if (sourceId !== 'user' && sourceId !== 'self') {
         if (lowerContent.includes('thank') || lowerContent.includes('helpful') || lowerContent.includes('good job')) {
             if (!targetCell.likedCells.includes(sourceId)) {
                 targetCell.likedCells.push(sourceId);
@@ -738,8 +740,8 @@ const handleMessageReception = (targetCell: Cell, sourceId: CellId | 'user', con
 };
 
 
-// --- Initialize with a few cells ---
-useNetworkStore.getState().initializeNetwork(7); // Start with 7 cells for role diversity
+// --- Initialize with a set number of cells ---
+useNetworkStore.getState().initializeNetwork(predefinedRoles.length); // Start with one of each role
 
 // --- Auto-tick interval ---
 let tickInterval: NodeJS.Timeout | null = null;

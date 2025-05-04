@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { startAutoTick, stopAutoTick } from '@/hooks/useNetworkStore';
 import { Slider } from '@/components/ui/slider';
-import { AlertCircle, Bot, BrainCircuit, Clock, HelpCircle, MessageSquare, Plus, Send, Trash2, Zap, Milestone, ListTree, Target, History, User } from 'lucide-react';
+import { AlertCircle, Bot, BrainCircuit, Clock, HelpCircle, MessageSquare, Plus, Send, Trash2, Zap, Milestone, ListTree, Target, History, User, RefreshCw } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -60,12 +60,13 @@ export const ControlPanel: React.FC = () => {
   }));
     const { toast } = useToast();
 
-  const [networkSize, setNetworkSize] = useState(5);
+  const [networkSize, setNetworkSize] = useState(10); // Default to 10 initial cells
   const [messageContent, setMessageContent] = useState('');
   const [targetCellId, setTargetCellId] = useState<'broadcast' | 'user' | string>('broadcast');
   const [helpRequestText, setHelpRequestText] = useState('');
   const [isAutoTicking, setIsAutoTicking] = useState(true); // Assume auto-tick starts by default
   const [newPurpose, setNewPurpose] = useState(purpose);
+  const [isSettingPurpose, setIsSettingPurpose] = useState(false); // Loading state for purpose setting
 
   const selectedCell = selectedCellId ? getCellById(selectedCellId) : null;
 
@@ -84,12 +85,17 @@ export const ControlPanel: React.FC = () => {
         toast({ title: "Error", description: "Purpose cannot be empty.", variant: "destructive" });
         return;
     }
+    setIsSettingPurpose(true);
     try {
         await setPurpose(newPurpose);
-        toast({ title: "Purpose Updated", description: "AI is reconfiguring cell expertise and goals." });
+        toast({ title: "Purpose Update Triggered", description: "AI is processing the new network purpose." });
     } catch (error) {
          console.error("Failed to set purpose:", error);
-         toast({ title: "Error Setting Purpose", description: "Could not update network purpose.", variant: "destructive" });
+         // Display specific error from the action if available
+         const errorMessage = error instanceof Error ? error.message : "Could not update network purpose.";
+         toast({ title: "Error Setting Purpose", description: errorMessage, variant: "destructive" });
+    } finally {
+        setIsSettingPurpose(false);
     }
   };
 
@@ -107,12 +113,13 @@ export const ControlPanel: React.FC = () => {
 
     if (selectedCellId && targetCellId === selectedCellId) {
       // If target is the selected cell, maybe interpret as user replying *to* the cell?
-      // This logic needs refinement based on desired interaction flow.
       // For now, keep it simple: user sends to target.
+      source = 'user'; // User is sending the message
+      // We already have target = selectedCellId
     }
 
     await sendMessage(source, target, messageContent);
-    toast({ title: "Message Sent", description: `To: ${target === 'broadcast' ? 'All Cells' : target}` });
+    toast({ title: "Message Sent", description: `To: ${target === 'broadcast' ? 'All Cells' : (target === 'user' ? 'User Interface' : `Cell ${target.substring(0,6)}...`)}` });
     setMessageContent(''); // Clear input after sending
   };
 
@@ -122,7 +129,7 @@ export const ControlPanel: React.FC = () => {
         return;
     };
     await askForHelp(selectedCellId, helpRequestText);
-    toast({ title: "Help Request Sent", description: `Cell ${selectedCellId} asked for help.` });
+    toast({ title: "Help Request Sent", description: `Cell ${selectedCellId.substring(0,6)} asked for help.` });
     setHelpRequestText('');
   };
 
@@ -141,6 +148,7 @@ export const ControlPanel: React.FC = () => {
     if(isAutoTicking) {
         stopAutoTick();
         setIsAutoTicking(false);
+        toast({ title: "Auto-Tick Paused for Manual Tick"});
     }
     tick();
     toast({ title: "Manual Tick Executed" });
@@ -156,7 +164,7 @@ export const ControlPanel: React.FC = () => {
     if (selectedCellId) {
       const idToRemove = selectedCellId;
       removeCell(idToRemove);
-      toast({ title: "Cell Removed", description: `Cell ${idToRemove} deleted.` });
+      toast({ title: "Cell Removed", description: `Cell ${idToRemove.substring(0,6)} deleted.` });
       // selectedCellId is cleared within removeCell if it matches
     } else {
         toast({ title: "Error", description: "No cell selected to remove.", variant: "destructive" });
@@ -166,7 +174,7 @@ export const ControlPanel: React.FC = () => {
   const handleCloneCell = () => {
       if(selectedCellId) {
           addCell(selectedCellId);
-           toast({ title: "Cell Cloned", description: `Created clone of Cell ${selectedCellId}.` });
+           toast({ title: "Cell Cloned", description: `Created clone of Cell ${selectedCellId.substring(0,6)}.` });
       } else {
           toast({ title: "Error", description: "No cell selected to clone.", variant: "destructive" });
       }
@@ -184,7 +192,7 @@ export const ControlPanel: React.FC = () => {
         <SidebarSeparator />
         <SidebarContent className="p-0">
           <ScrollArea className="h-full px-2">
-            <Accordion type="single" collapsible defaultValue="item-1" className="w-full">
+            <Accordion type="multiple" defaultValue={['item-1', 'item-2']} className="w-full">
               {/* Network Controls */}
               <AccordionItem value="item-1">
                 <AccordionTrigger className="px-2 text-base hover:no-underline">
@@ -201,8 +209,12 @@ export const ControlPanel: React.FC = () => {
                        value={newPurpose}
                        onChange={(e) => setNewPurpose(e.target.value)}
                        className="h-24"
+                       disabled={isSettingPurpose}
                      />
-                     <Button onClick={handleSetPurpose} size="sm" className="w-full">Set Purpose & Reconfigure</Button>
+                     <Button onClick={handleSetPurpose} size="sm" className="w-full" disabled={isSettingPurpose}>
+                         {isSettingPurpose && <RefreshCw className="mr-2 size-4 animate-spin" />}
+                         Set Purpose & Reconfigure
+                    </Button>
                    </div>
 
                    <Separator />
@@ -212,7 +224,7 @@ export const ControlPanel: React.FC = () => {
                     <Slider
                       id="network-size"
                       min={1}
-                      max={30} // Keep initial size reasonable
+                      max={10} // Limit initial size to number of predefined roles
                       step={1}
                       value={[networkSize]}
                       onValueChange={(value) => setNetworkSize(value[0])}
@@ -232,7 +244,7 @@ export const ControlPanel: React.FC = () => {
 
                     <Separator />
                      <Button onClick={handleAddCell} size="sm" variant="secondary" className="w-full">
-                        <Plus className="mr-2 size-4" /> Add Random Cell
+                        <Plus className="mr-2 size-4" /> Add Cell (Random Role)
                      </Button>
                 </AccordionContent>
               </AccordionItem>
@@ -250,7 +262,7 @@ export const ControlPanel: React.FC = () => {
                       <CardHeader className="p-4">
                         <CardTitle className="flex items-center justify-between text-lg">
                             Cell Details
-                            <Badge variant={selectedCell.isAlive ? "secondary" : "destructive"}>
+                            <Badge variant={selectedCell.isAlive ? "secondary" : "destructive"} className="cursor-pointer" onClick={() => selectCell(selectedCell.id)}>
                                 {selectedCell.id.substring(0, 6)}...
                             </Badge>
                         </CardTitle>
@@ -259,9 +271,9 @@ export const ControlPanel: React.FC = () => {
                          </CardDescription>
                       </CardHeader>
                       <CardContent className="p-4 space-y-3 text-sm">
-                        <div className="flex items-center gap-2"> <Milestone className="size-4 text-muted-foreground"/> <strong>Expertise:</strong> {selectedCell.expertise}</div>
-                        <div className="flex items-center gap-2"> <Target className="size-4 text-muted-foreground"/> <strong>Goal:</strong> {selectedCell.goal}</div>
-                         <div className="flex items-center gap-2"> <ListTree className="size-4 text-muted-foreground"/> <strong>Liked Cells:</strong> {selectedCell.likedCells.length > 0 ? selectedCell.likedCells.map(id => <Badge key={id} variant="outline" className="cursor-pointer" onClick={()=> selectCell(id)}>{id.substring(0,4)}</Badge>) : 'None'}</div>
+                        <div className="flex items-start gap-2"> <Milestone className="size-4 text-muted-foreground mt-0.5"/> <div><strong>Expertise:</strong> {selectedCell.expertise}</div></div>
+                        <div className="flex items-start gap-2"> <Target className="size-4 text-muted-foreground mt-0.5"/> <div><strong>Goal:</strong> {selectedCell.goal}</div></div>
+                         <div className="flex items-start gap-2"> <ListTree className="size-4 text-muted-foreground mt-0.5"/> <div><strong>Liked Cells:</strong> {selectedCell.likedCells.length > 0 ? selectedCell.likedCells.map(id => <Badge key={id} variant="outline" className="cursor-pointer mr-1 mb-1" onClick={()=> selectCell(id)}>{id.substring(0,4)}</Badge>) : 'None'}</div></div>
 
                         <Separator className="my-3" />
 
@@ -292,10 +304,11 @@ export const ControlPanel: React.FC = () => {
 
                          <h4 className="font-medium flex items-center gap-2"><History className="size-4"/>History ({selectedCell.history.length})</h4>
                          <ScrollArea className="h-40 w-full rounded-md border p-2 text-xs bg-muted/30">
+                            {selectedCell.history.length === 0 && <p className="text-muted-foreground italic">No history yet.</p>}
                              {selectedCell.history.slice().reverse().map(entry => ( // Reverse for newest first
-                                 <p key={entry.seq} className="mb-1">
+                                 <p key={entry.seq} className="mb-1.5 leading-relaxed">
                                      <span className="text-muted-foreground mr-1">[{entry.age}]</span>
-                                     <Badge variant="outline" className="mr-1 text-xs capitalize">{entry.type}</Badge>
+                                     <Badge variant="outline" className="mr-1.5 text-[10px] capitalize px-1.5 py-0 align-middle">{entry.type}</Badge>
                                       {entry.text}
                                  </p>
                              ))}
@@ -327,14 +340,14 @@ export const ControlPanel: React.FC = () => {
                             <option value="broadcast">Broadcast to All</option>
                             <option value="user">To User Interface (Debug)</option>
                             <optgroup label="Alive Cells">
-                                {Object.values(cells).filter(c => c.isAlive).map(cell => (
+                                {Object.values(cells).filter(c => c.isAlive).sort((a,b) => a.id.localeCompare(b.id)).map(cell => (
                                     <option key={cell.id} value={cell.id}>
                                         Cell {cell.id.substring(0, 6)} ({cell.expertise})
                                     </option>
                                 ))}
                             </optgroup>
                             <optgroup label="Dead Cells (Inspect Only)">
-                                {Object.values(cells).filter(c => !c.isAlive).map(cell => (
+                                {Object.values(cells).filter(c => !c.isAlive).sort((a,b) => a.id.localeCompare(b.id)).map(cell => (
                                      <option key={cell.id} value={cell.id} disabled>
                                         Cell {cell.id.substring(0, 6)} (Dead)
                                      </option>
@@ -346,7 +359,7 @@ export const ControlPanel: React.FC = () => {
                      <Label htmlFor="message-content">Message</Label>
                      <Textarea
                        id="message-content"
-                       placeholder="Enter your message..."
+                       placeholder="Enter your message... (Try 'purpose?')"
                        value={messageContent}
                        onChange={(e) => setMessageContent(e.target.value)}
                        className="h-24"
