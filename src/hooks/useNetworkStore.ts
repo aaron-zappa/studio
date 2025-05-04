@@ -1,4 +1,5 @@
 
+
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { NetworkState, Cell, CellId, Message, HistoryEntry, HistoryEntryData } from '@/types';
@@ -23,7 +24,7 @@ const MAX_AGE = 99;
 const MAX_CELLS = 100; // Limit the number of cells for performance
 const GRID_SIZE = 500; // Size of the visualization area
 const CLONE_DISTANCE_THRESHOLD = 50; // Min distance between parent and clone
-const MOVE_STEP = 70; // Increased movement step further
+const MOVE_STEP = 20; // Increased movement step further
 const POSITION_HISTORY_LIMIT = 15; // Store the last 15 positions for trails
 const MAX_HISTORY = 100; // Max history entries per cell
 
@@ -187,28 +188,36 @@ const getClonedPosition = (parentPos: { x: number; y: number }, existingPosition
 
 
 // Helper function to add history *within* an immer draft context
+// Needs to be directly called within the 'set' callback for Immer to track changes
 const _addHistoryEntry = (cell: Cell | undefined, data: HistoryEntryData) => {
     if (!cell) {
         console.warn("Attempted to add history to a non-existent cell.");
         return;
     }
-    // Ensure cell.history is mutable within the immer draft
-    if (!cell.history) {
+     // This check *might* be redundant if called correctly within Immer's set,
+     // but it's a safeguard. Immer makes the draft mutable.
+    if (!Array.isArray(cell.history)) {
+        console.warn(`Cell ${cell.id} history is not an array. Initializing.`);
         cell.history = [];
     }
+
 
     if (cell.history.length >= MAX_HISTORY) {
         cell.history.shift(); // Remove the oldest entry
     }
 
-    const seq = cell.history.length > 0 ? cell.history[cell.history.length - 1].seq + 1 : 0;
+    // Find the highest sequence number in the current history (or start from -1 if empty)
+    const maxSeq = cell.history.reduce((max, entry) => Math.max(max, entry.seq), -1);
+    const newSeq = maxSeq + 1;
+
     const newEntry: HistoryEntry = {
         ...data,
-        seq,
+        seq: newSeq, // Use the calculated new sequence number
         age: cell.age, // Ensure age is current
         timestamp: Date.now(), // Ensure timestamp is current
     };
 
+    // Immer allows direct mutation of the draft state
     cell.history.push(newEntry);
     cell.version = (cell.version ?? 0) + 1; // Increment version on history change
 };
@@ -608,7 +617,7 @@ export const useNetworkStore = create(
                             });
                             route = undefined;
                         } else {
-                            queueMessage({ id: messageId, sourceCellId, targetCellId: finalDestination, content, timestamp, route });
+                            queueMessage({ id: messageId, sourceCellId: sourceId, targetCellId: finalDestination, content, timestamp, route });
                             set(state => { // Update history within set
                                 if (sourceId !== 'user' && state.cells[sourceId]) {
                                     _addHistoryEntry(state.cells[sourceId], { type: 'message', text: `Sent (via route): "${content.substring(0,30)}..." towards ${finalDestination}. AI Reason: ${reasoning.substring(0, 50)}` });
@@ -629,7 +638,7 @@ export const useNetworkStore = create(
 
                             setTimeout(() => get().clearMessages(), 3000);
                              set(state => { messagesToAdd.forEach(msg => state.messages.push(msg)); }); // Add queued messages
-                            return;
+                            return; // Return early as message handling happened via route
                         }
                     } else {
                         console.log("AI routing resulted in direct message or failed to find a path.");
@@ -643,7 +652,7 @@ export const useNetworkStore = create(
             }
 
             // --- Direct Message or Broadcast Handling (Fallback/Default) ---
-            const newMessage: Message = { id: messageId, sourceCellId, targetCellId: finalTargetId, content, timestamp };
+            const newMessage: Message = { id: messageId, sourceCellId: sourceId, targetCellId: finalTargetId, content, timestamp };
             queueMessage(newMessage);
 
             set(state => {
@@ -939,9 +948,8 @@ const handleHopReception = (targetCellId: CellId, sourceCellId: CellId, content:
             }
         } else {
             console.warn(`Route hop target ${targetCellId} is dead. Stopping message propagation.`);
-            // This modification needs to happen outside the `set` callback's scope
-            // We use the passed callback function to signal the stop.
-             setTimeout(() => setStopPropagation(true), 0);
+            // Signal stop using the callback immediately - no need for timeout
+            setStopPropagation(true);
         }
     });
 };
@@ -988,3 +996,4 @@ if (typeof window !== 'undefined') {
 if (typeof window !== 'undefined') {
     window.addEventListener('beforeunload', stopAutoTick);
 }
+
