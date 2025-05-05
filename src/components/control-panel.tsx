@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { startAutoTick, stopAutoTick, MAX_CELLS } from '@/hooks/useNetworkStore'; // Import MAX_CELLS
 import { Slider } from '@/components/ui/slider';
-import { AlertCircle, Bot, BrainCircuit, Clock, HelpCircle, MessageSquare, Plus, Send, Trash2, Zap, Milestone, ListTree, Target, History, User, RefreshCw, BedDouble, ScanLine, Thermometer, BarChart, Waves, Wind, Lightbulb, Droplet, Rss, Eye, Ear, Paintbrush, MinusSquare } from 'lucide-react';
+import { AlertCircle, Bot, BrainCircuit, Clock, HelpCircle, MessageSquare, Plus, Send, Trash2, Zap, Milestone, ListTree, Target, History, User, RefreshCw, BedDouble, ScanLine, Thermometer, BarChart, Waves, Wind, Lightbulb, Droplet, Rss, Eye, Ear, Paintbrush, MinusSquare, BookOpen } from 'lucide-react'; // Added BookOpen
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Sidebar,
@@ -276,6 +276,11 @@ export const ControlPanel: React.FC = () => {
        toast({ title: "Command Sent", description: "Instructed sensors to reset color." });
    };
 
+   const handleOpenRequirements = () => {
+       window.open('/requirements.html', '_blank');
+       toast({ title: "Opening Documentation"});
+   }
+
 
   return (
     <>
@@ -370,6 +375,11 @@ export const ControlPanel: React.FC = () => {
                         <Plus className="mr-2 size-4" /> Add Cell {customRole ? `(${customRole.trim()})` : "(Next Role)"}
                      </Button>
                    </div>
+                     <Separator />
+                      {/* Requirements Button */}
+                      <Button onClick={handleOpenRequirements} size="sm" variant="outline" className="w-full">
+                         <BookOpen className="mr-2 size-4" /> View Requirements
+                     </Button>
                 </AccordionContent>
               </AccordionItem>
 
@@ -455,7 +465,7 @@ export const ControlPanel: React.FC = () => {
                                  <div key={entry.seq} className="mb-1.5 leading-relaxed">
                                      <span className="text-muted-foreground mr-1">[{entry.age}]</span>
                                      {/* Use span with badgeVariants classes instead of div */}
-                                     <Badge variant='outline' className='mr-1.5 text-[10px] capitalize px-1.5 py-0 align-middle'>{entry.type}</Badge>
+                                     <Badge asSpan variant='outline' className='mr-1.5 text-[10px] capitalize px-1.5 py-0 align-middle'>{entry.type}</Badge>
                                      <span className="break-words">{entry.text}</span>
                                  </div>
                              ))}
