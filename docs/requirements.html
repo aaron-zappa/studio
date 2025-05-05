@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CellConnect - Application Requirements</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 2em;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        h1, h2, h3 {
+            color: #222831; /* Dark Blue */
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 0.3em;
+        }
+        h1 {
+            text-align: center;
+        }
+        h2 {
+            margin-top: 1.5em;
+        }
+        h3 {
+            margin-top: 1em;
+            color: #00777A; /* Darker Teal */
+        }
+        ul {
+            list-style-type: disc;
+            margin-left: 2em;
+        }
+        li {
+            margin-bottom: 0.5em;
+        }
+        code {
+            background-color: #e9ecef;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .priority-high { font-weight: bold; color: #d9534f; }
+        .priority-medium { font-weight: bold; color: #f0ad4e; }
+        .priority-low { font-weight: bold; color: #5cb85c; }
+        .status-implemented { color: green; }
+        .status-partial { color: orange; }
+        .status-planned { color: grey; }
+        .tech-stack {
+            background-color: #ffffff;
+            padding: 1em;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+        }
+        .future {
+             background-color: #eef7f7;
+             padding: 1em;
+             border-left: 5px solid #00ADB5; /* Teal */
+             border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>CellConnect Application Requirements</h1>
+
+    <h2>Overview</h2>
+    <p>CellConnect is a Next.js application designed to simulate a network of interconnected "cells". These cells act as independent agents that communicate and collaborate to achieve collective goals or respond to user interactions. The application visualizes the network and allows users to observe and influence its behavior, leveraging AI for tasks like message routing and understanding network purpose.</p>
+
+    <h2>Core Requirements (Prioritized)</h2>
+
+    <h3>1. Cell Agent Simulation (<span class="priority-high">High Priority</span>)</h3>
+    <ul>
+        <li>(<span class="status-implemented">Implemented</span>) Each cell must be an independent agent with a unique ID (<code>nanoid</code>).</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cells must possess an <code>age</code> (number), incremented each simulation tick.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cells must have specific <code>expertise</code> (string, predefined roles initially) and a <code>goal</code> (string).</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cells must have a <code>status</code>: 'active' or 'sleeping'.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cells transition to 'sleeping' based on inactivity (<code>lastActiveTick</code>, <code>SLEEP_THRESHOLD</code>, <code>SLEEP_CHANCE_ON_TICK</code>) or non-critical goals, and can wake spontaneously (<code>RANDOM_WAKE_CHANCE</code>) or via interaction.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cells must die (become <code>isAlive = false</code>) if <code>age</code> exceeds <code>MAX_AGE</code> (99). Dead cells can only be inspected.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cells must maintain a limited <code>history</code> (max <code>MAX_HISTORY</code> entries) of significant events (decisions, messages, status changes, init, death, clone, config changes) with sequence number, type, age, text, and timestamp.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cells must have a <code>version</code> number, incremented on state changes relevant to visualization or core properties.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Active cells can <code>clone</code> themselves, creating a new cell nearby with potentially inherited properties.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cells maintain a list of <code>likedCells</code> (other Cell IDs) influencing movement and potentially communication.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Mechanism to reduce a cell's age via user interaction.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cells can have an optional <code>indicatorColor</code> for visual cues (e.g., sensor status).</li>
+        <li>(<span class="status-planned">Planned</span>) Each cell should manage an in-memory database (details TBD, initially SQLite).</li>
+    </ul>
+
+    <h3>2. Network Dynamics & Simulation (<span class="priority-high">High Priority</span>)</h3>
+    <ul>
+        <li>(<span class="status-implemented">Implemented</span>) A central <code>tick</code> function must drive the simulation, incrementing cell ages and triggering cell logic.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Auto-ticking mechanism with configurable interval, start/stop controls, and manual tick option.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Network initialization with a configurable number of cells (up to <code>MAX_CELLS</code>).</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cells must have a <code>position</code> (x, y) within a defined grid space (<code>GRID_SIZE</code>).</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cells must track their recent <code>positionHistory</code> for movement trails.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cells move based on attraction towards <code>likedCells</code> and repulsion from nearby cells (parameters: <code>MOVE_STEP</code>, <code>REPULSION_RADIUS</code>, <code>REPULSION_STRENGTH</code>, <code>MIN_DISTANCE_BETWEEN_CELLS</code>).</li>
+        <li>(<span class="status-implemented">Implemented</span>) Ability to add new cells during runtime, either cloned or with assigned/selected roles (including sensor types).</li>
+        <li>(<span class="status-implemented">Implemented</span>) Ability to remove selected cells during runtime.</li>
+    </ul>
+
+    <h3>3. Communication & User Interaction (<span class="priority-high">High Priority</span>)</h3>
+    <ul>
+        <li>(<span class="status-implemented">Implemented</span>) Cells must communicate via <code>Message</code> objects (containing ID, source, target, content, timestamp, optional route).</li>
+        <li>(<span class="status-implemented">Implemented</span>) Users must be able to send messages, either broadcast to all cells or directed to a specific cell ID.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cells must be able to request help (<code>askForHelp</code>) from neighbors, triggering AI interpretation.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cells must respond to a specific query (e.g., "purpose?") with their details (goal, expertise, age, status).</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cells (especially sensors) must respond to specific broadcast commands (e.g., "color all sensors green", "reset sensor color").</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cells update their <code>likedCells</code> list based on positive/negative message content.</li>
+        <li>(<span class="status-partial">Partially Implemented</span>) Specific cell types (e.g., Data Analyzer, Task Router) should react appropriately to specific message formats (e.g., "Analyze:", "Route Task:").</li>
+    </ul>
+
+    <h3>4. Network Visualization (<span class="priority-medium">Medium Priority</span>)</h3>
+    <ul>
+        <li>(<span class="status-implemented">Implemented</span>) Visualize the network with cells as nodes and connections/messages as lines/arrows.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cell nodes should visually represent their status (active, sleeping, dead) and selection state.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cell node size should subtly indicate age.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Display cell ID prefix within the node.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Display optional indicator dot (<code>indicatorColor</code>) on cell nodes.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Visualize message paths, potentially animated or highlighted (<code>message-path</code> class).</li>
+        <li>(<span class="status-implemented">Implemented</span>) Visualize connections between liked cells.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Visualize recent cell movement using trails (<code>MovementTrail</code> component).</li>
+        <li>(<span class="status-implemented">Implemented</span>) Provide a Control Panel (sidebar) for user interactions (network config, messaging, cell inspection).</li>
+        <li>(<span class="status-implemented">Implemented</span>) Cell Inspector panel must show selected cell details: ID, status, age, version, expertise, goal, liked cells, and history log.</li>
+    </ul>
+
+    <h3>5. AI Integration (Genkit Flows) (<span class="priority-medium">Medium Priority</span>)</h3>
+    <ul>
+        <li>(<span class="status-implemented">Implemented</span>) <code>cell-purpose-understanding</code>: AI flow to interpret a user-defined network purpose and potentially suggest initialization parameters.</li>
+        <li>(<span class="status-implemented">Implemented</span>) <code>cell-help-request-interpretation</code>: AI flow to analyze a cell's help request and identify relevant expertise among its neighbors.</li>
+        <li>(<span class="status-implemented">Implemented</span>) <code>message-routing</code>: AI flow to determine the optimal path for a message based on content, expertise, connections, and network state. Includes validation and fallback logic.</li>
+    </ul>
+
+    <h3>6. Styling & UI Components (<span class="priority-low">Low Priority</span>)</h3>
+    <ul>
+        <li>(<span class="status-implemented">Implemented</span>) Adhere to the specified color theme: Dark Blue (#222831), Light Grey (#EEEEEE), Teal (#00ADB5) using CSS variables (<code>globals.css</code>).</li>
+        <li>(<span class="status-implemented">Implemented</span>) Utilize ShadCN UI components for UI elements (Buttons, Cards, Input, Textarea, Accordion, Select, Slider, etc.).</li>
+        <li>(<span class="status-implemented">Implemented</span>) Use Tailwind CSS for styling with utility classes.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Implement a responsive sidebar layout (<code>SidebarProvider</code>, <code>Sidebar</code>, <code>SidebarInset</code>).</li>
+        <li>(<span class="status-implemented">Implemented</span>) Use Lucide React for icons.</li>
+        <li>(<span class="status-implemented">Implemented</span>) Apply professional styling touches like rounded corners and shadows.</li>
+    </ul>
+
+    <h3>7. Persistence (<span class="priority-low">Low Priority</span> / <span class="status-partial">Partially Implemented</span>)</h3>
+    <ul>
+        <li>(<span class="status-planned">Planned</span>) Before a cell dies, its in-memory database should be written to a persistent SQLite file (filename related to <code>cellId</code>).</li>
+        <li>(<span class="status-partial">Partially Implemented</span>) Cell state (excluding DB) is managed in Zustand store, which is in-memory only.</li>
+    </ul>
+
+
+    <h2>Technical Stack</h2>
+    <div class="tech-stack">
+        <ul>
+            <li><strong>Framework:</strong> Next.js (App Router)</li>
+            <li><strong>Language:</strong> TypeScript</li>
+            <li><strong>UI Components:</strong> ShadCN UI, Radix UI Primitives</li>
+            <li><strong>Styling:</strong> Tailwind CSS</li>
+            <li><strong>State Management:</strong> Zustand (with Immer middleware)</li>
+            <li><strong>AI Integration:</strong> Genkit (for LLM flows)</li>
+            <li><strong>Icons:</strong> Lucide React</li>
+            <li><strong>Unique IDs:</strong> nanoid</li>
+            <li><strong>Data Fetching/Caching:</strong> React Query (@tanstack/react-query)</li>
+            <li><strong>Database (Planned):</strong> SQLite (in-memory initially, potentially persisted)</li>
+        </ul>
+    </div>
+
+    <h2>Future Expansion Considerations</h2>
+    <div class="future">
+        <ul>
+            <li><strong>Advanced Cell Behaviors:</strong> Implement more complex decision-making logic within cells (e.g., based on internal DB state, learned behaviors).</li>
+            <li><strong>Cell Specialization:</strong> Develop more distinct roles and interactions based on expertise (e.g., dedicated router cells, memory cells).</li>
+            <li><strong>Network Topologies:</strong> Allow configuration of different network connection strategies (e.g., grid, random graph, small-world).</li>
+            <li><strong>Resource Management:</strong> Simulate resources like energy or bandwidth and have cells manage/compete for them.</li>
+            <li><strong>Learning & Adaptation:</strong> Enable cells to adapt their goals, expertise, or connections based on network events or feedback.</li>
+            <li><strong>Enhanced Visualization:</strong> More detailed cell information on hover/click, dynamic graph layouts, heatmaps for activity/age.</li>
+            <li><strong>Scalability:</strong> Optimize state management and rendering for much larger networks (beyond 100 cells). Consider backend simulation if needed.</li>
+            <li><strong>Persistence Options:</strong> Explore different database solutions (e.g., serverless DBs) for storing cell state and history persistently.</li>
+            <li><strong>User Scenarios:</strong> Define specific simulation scenarios or challenges for the network to solve.</li>
+            <li><strong>Web Workers:</strong> Offload intensive simulation logic to web workers to keep the main UI thread responsive.</li>
+        </ul>
+    </div>
+
+
+</body>
+</html>
