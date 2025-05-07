@@ -6,6 +6,7 @@ import React, { useMemo, useCallback, memo, useEffect, useState } from 'react';
 import { useNetworkStore } from '@/hooks/useNetworkStore';
 import type { Cell, CellId, Message } from '@/types';
 import { cn } from '@/lib/utils';
+import { useSidebar } from '@/components/ui/sidebar'; // Import useSidebar hook
 
 // --- Cell Node Component ---
 interface CellNodeProps {
@@ -15,13 +16,20 @@ interface CellNodeProps {
 const CellNode: React.FC<CellNodeProps> = memo(({ data }) => {
   const selectCell = useNetworkStore((state) => state.selectCell);
   const selectedCellId = useNetworkStore((state) => state.selectedCellId);
+  const { setOpen, setOpenMobile, isMobile } = useSidebar(); // Get sidebar control functions
   const isSelected = selectedCellId === data.id;
 
   const size = 30 + Math.min(data.age / 2, 30); // Size increases slightly with age
 
-  const handleClick = () => {
+  const handleClick = useCallback(() => {
     selectCell(data.id);
-  };
+    // Ensure the sidebar opens when a cell is selected
+    if (isMobile) {
+        setOpenMobile(true);
+    } else {
+        setOpen(true);
+    }
+  }, [data.id, selectCell, setOpen, setOpenMobile, isMobile]);
 
   // Determine class based on alive status and active/sleeping status
    let statusClass = '';
@@ -177,13 +185,14 @@ export const NetworkVisualization: React.FC = () => {
      const movementTrails = useMemo(() => {
         console.log("Recalculating movement trails...");
         return cells
-            // Only show trails for alive AND active cells
-            .filter(cell => cell.isAlive && cell.status === 'active' && cell.positionHistory && cell.positionHistory.length > 1)
+            // Only show trails for alive cells (active or sleeping, as they might have moved before sleeping)
+            .filter(cell => cell.isAlive && cell.positionHistory && cell.positionHistory.length > 1)
             .map(cell => (
                 <MovementTrail key={`trail-${cell.id}`} positions={cell.positionHistory} />
             ));
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cellDependencies]); // Re-render when cell positions change
+
 
     const edges = useMemo(() => {
         console.log("Recalculating edges..."); // Debug log
@@ -324,5 +333,6 @@ export const NetworkVisualization: React.FC = () => {
     </div>
   );
 };
+
 
 
