@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CellConnect Help</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 2em;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 2em;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2, h3 {
+            color: #222831; /* Dark Blue */
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 0.3em;
+            margin-top: 1.5em;
+        }
+        h1 {
+            text-align: center;
+            margin-top: 0;
+        }
+        code {
+            background-color: #e9ecef;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .highlight {
+            color: #00777A; /* Darker Teal */
+            font-weight: bold;
+        }
+        ul {
+            list-style-type: disc;
+            margin-left: 2em;
+        }
+        li {
+            margin-bottom: 0.5em;
+        }
+        .control-panel-section {
+            background-color: #f0f8ff;
+            border-left: 5px solid #00ADB5; /* Teal */
+            padding: 1em;
+            margin-top: 1em;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to CellConnect!</h1>
+
+        <h2>What is CellConnect?</h2>
+        <p>CellConnect is an interactive simulation visualizing a network of autonomous "cells". Think of it like a digital petri dish where individual units (cells) live, interact, communicate, and even replicate, all driven by simple rules and occasional AI guidance.</p>
+        <p>The main goal is to observe emergent behaviors and patterns that arise from these local interactions within the network.</p>
+
+        <h2>The Visualization Area (Main Window)</h2>
+        <p>This is where the action happens! You'll see:</p>
+        <ul>
+            <li><span class="highlight">Cells:</span> Represented by circles. Their appearance indicates their status:
+                <ul>
+                    <li><strong style="color: #00ADB5;">Active (Teal/Accent):</strong> Busy performing actions, moving, or communicating.</li>
+                    <li><strong style="color: gray;">Sleeping (Grey):</strong> Inactive to conserve resources, can be woken up.</li>
+                    <li><strong style="color: red;">Dead (Red/Faded):</strong> Reached the end of their lifespan (age > 99).</li>
+                    <li><span class="highlight">Size:</span> Slightly larger circles indicate older cells.</li>
+                    <li><span class="highlight">ID:</span> The first few characters of the cell's unique ID are shown inside.</li>
+                    <li><span class="highlight">Indicator Dot:</span> Some cells (like sensors) might have a small colored dot in the top-right, indicating a specific state (e.g., sensor status).</li>
+                     <li><span class="highlight">Selection:</span> A selected cell has a ring around it.</li>
+                </ul>
+            </li>
+            <li><span class="highlight">Connections (Lines):</span>
+                <ul>
+                    <li><strong style="color: #222831;">Liked Connections (Dark Blue/Primary):</strong> Shows which cells "like" each other, influencing movement.</li>
+                    <li><strong style="color: #00ADB5;">Message Paths (Pulsing Teal/Accent with Arrow):</strong> Indicates the path a message is currently taking.</li>
+                     <li><strong style="color: grey;">Movement Trails (Faint Grey Lines):</strong> Shows the recent path a cell has traveled.</li>
+                </ul>
+            </li>
+        </ul>
+         <p>Click on any cell (even sleeping ones) to select it and view its details in the Control Panel.</p>
+
+        <h2>The Control Panel (Left Sidebar)</h2>
+        <p>This is your interface to interact with and manage the network. It's organized into collapsible sections:</p>
+
+        <div class="control-panel-section">
+            <h3><span class="highlight">Network Controls</span></h3>
+            <ul>
+                <li><strong>Network Purpose:</strong> Define a high-level goal for the network. The AI will try to interpret this and guide cell behavior (though currently, it mainly influences initial setup and wakes sleeping cells on change).</li>
+                <li><strong>Initial Cell Count:</strong> Set how many cells to start with (using the slider) when you initialize. Max is 100.</li>
+                <li><strong>Initialize Network:</strong> Clears the current network and creates a new one based on the count and purpose.</li>
+                <li><strong>Pause/Resume Ticks:</strong> Control the automatic simulation steps.</li>
+                <li><strong>Manual Tick:</strong> Advance the simulation by one step (auto-tick must be paused).</li>
+                <li><strong>Add Cell:</strong> Create a new cell. You can optionally specify its <code>expertise</code> (role). Type 'Sensor' to reveal a dropdown for specific sensor types. If left blank, it gets the next available default role.</li>
+                <li><strong>View Requirements:</strong> Opens the technical requirements document for the application in a new tab.</li>
+            </ul>
+        </div>
+
+        <div class="control-panel-section">
+            <h3><span class="highlight">Cell Inspector</span></h3>
+            <p>Displays details of the currently selected cell:</p>
+            <ul>
+                <li><strong>ID, Status, Age, Version:</strong> Basic cell information.</li>
+                <li><strong>Expertise & Goal:</strong> The cell's assigned role and objective.</li>
+                <li><strong>Liked Cells:</strong> List of other cells this cell is attracted to (click a badge to select that cell).</li>
+                <li><strong>Reduce Age:</strong> Manually decrease the selected cell's age by the specified amount.</li>
+                <li><strong>Ask Neighbors for Help:</strong> (Active cells only) Type a request, and the cell will ask nearby cells for assistance, potentially using AI to find relevant neighbors.</li>
+                <li><strong>Clone:</strong> (Active cells only) Create a duplicate of the selected cell nearby.</li>
+                <li><strong>Remove:</strong> Delete the selected cell from the network.</li>
+                <li><strong>History:</strong> A log of the cell's significant events (creation, messages, status changes, etc.).</li>
+            </ul>
+        </div>
+
+        <div class="control-panel-section">
+            <h3><span class="highlight">Messaging</span></h3>
+            <ul>
+                <li><strong>Target:</strong> Choose where to send your message:
+                    <ul>
+                        <li><code>Broadcast to All</code>: Sends to every living cell.</li>
+                        <li><code>Specific Cell</code>: Sends only to the chosen cell (select from active or sleeping). Dead cells are listed but disabled.</li>
+                         <li><code>To User Interface (Debug)</code>: Sends the message back to be logged in the browser console (useful for developers).</li>
+                    </ul>
+                </li>
+                <li><strong>Message Content:</strong> Type your message here. Try sending <code>purpose?</code> to a cell!</li>
+                <li><strong>Send Message:</strong> Dispatches the message.</li>
+                <li><strong>Sensor Commands (Broadcast Only):</strong>
+                    <ul>
+                        <li><code>Color Sensors Green</code>: Sends a broadcast message specifically interpreted by sensor cells to turn their indicator dot green.</li>
+                        <li><code>Reset Sensor Colors</code>: Sends a broadcast to make sensor cells remove their indicator dot color.</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+
+        <h2>AI Integration</h2>
+        <p>CellConnect uses AI (via Genkit flows) for specific tasks:</p>
+        <ul>
+            <li><strong>Purpose Understanding:</strong> Interprets the user-defined network purpose.</li>
+            <li><strong>Help Request Interpretation:</strong> Analyzes a cell's help request to find relevant neighbors.</li>
+            <li><strong>Message Routing:</strong> (Used internally) Determines potentially optimal paths for messages based on network state and cell expertise, though simple direct/broadcast is often used as fallback.</li>
+        </ul>
+
+        <h2>Experiment!</h2>
+        <p>The best way to understand CellConnect is to play around with it:</p>
+        <ul>
+            <li>Initialize networks of different sizes.</li>
+            <li>Send various messages (broadcast and direct). Ask cells for their <code>purpose?</code>.</li>
+            <li>Observe how cells move, especially towards cells they 'like'.</li>
+            <li>Watch cells clone or die.</li>
+            <li>Use the "Ask for Help" feature.</li>
+            <li>Try adding specific sensor types and using the sensor color commands.</li>
+        </ul>
+
+        <p>Enjoy exploring the CellConnect network!</p>
+    </div>
+</body>
+</html>

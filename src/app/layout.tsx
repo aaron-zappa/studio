@@ -1,3 +1,4 @@
+
 'use client'; // Add 'use client' directive
 
 import type { Metadata } from 'next';
@@ -7,6 +8,9 @@ import { Geist } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { QueryProvider } from '@/components/providers/query-provider'; // Import the provider
+import { Button } from '@/components/ui/button'; // Import Button
+import { Info } from 'lucide-react'; // Import Info icon
+import React from 'react'; // Import React for useEffect
 
 // If Geist Sans is needed, instantiate it here.
 // Note: Using fonts directly in Client Components like this is fine.
@@ -38,6 +42,12 @@ export default function RootLayout({
   // Setting title/metadata might need to be handled differently if dynamic.
   // For a static title, you can set it in the <head> directly or use useEffect.
 
+   // Handler for opening the help file
+   const handleOpenHelp = () => {
+    window.open('/help.html', '_blank', 'noopener,noreferrer');
+   };
+
+
   return (
     <html lang="en" className="dark">
       {/*
@@ -55,9 +65,21 @@ export default function RootLayout({
          {/* Link fonts if needed */}
          {/* Favicon link removed to prevent potential build/chunking errors */}
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased relative`}> {/* Added relative positioning */}
         {/* Use the QueryProvider wrapper */}
         <QueryProvider>
+            {/* Help Button */}
+            <Button
+              variant="default" // Use default blue color
+              size="icon"
+              className="fixed top-4 right-4 z-50 rounded-full shadow-lg" // Positioned top-right, always visible
+              onClick={handleOpenHelp}
+              title="Help - Learn about CellConnect"
+            >
+              <Info className="size-5" />
+              <span className="sr-only">Help</span>
+            </Button>
+
           {children}
           <Toaster />
         </QueryProvider>
@@ -65,3 +87,4 @@ export default function RootLayout({
     </html>
   );
 }
+
