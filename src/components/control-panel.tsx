@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { startAutoTick, stopAutoTick, MAX_CELLS } from '@/hooks/useNetworkStore'; // Import MAX_CELLS
 import { Slider } from '@/components/ui/slider';
-import { AlertCircle, Bot, BrainCircuit, Clock, HelpCircle, MessageSquare, Plus, Send, Trash2, Zap, Milestone, ListTree, Target, History, User, RefreshCw, BedDouble, ScanLine, Thermometer, BarChart, Waves, Wind, Lightbulb, Droplet, Rss, Eye, Ear, Paintbrush, MinusSquare, BookOpen } from 'lucide-react'; // Added BookOpen
+import { AlertCircle, Bot, BrainCircuit, Clock, HelpCircle, MessageSquare, Plus, Send, Trash2, Zap, Milestone, ListTree, Target, History, User, RefreshCw, BedDouble, ScanLine, Thermometer, BarChart, Waves, Wind, Lightbulb, Droplet, Rss, Eye, Ear, Paintbrush, MinusSquare, BookOpen, Play, Square } from 'lucide-react'; // Added Play, Square icons
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Sidebar,
@@ -85,7 +85,7 @@ export const ControlPanel: React.FC = () => {
   const [messageContent, setMessageContent] = useState('');
   const [targetCellId, setTargetCellId] = useState<'broadcast' | 'user' | CellId>('broadcast');
   const [helpRequestText, setHelpRequestText] = useState('');
-  const [isAutoTicking, setIsAutoTicking] = useState(true);
+  const [isAutoTicking, setIsAutoTicking] = useState(true); // Default to true as auto-tick starts on load
   const [newPurpose, setNewPurpose] = useState(purpose);
   const [isSettingPurpose, setIsSettingPurpose] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
@@ -107,11 +107,23 @@ export const ControlPanel: React.FC = () => {
        }
    }, [customRole]);
 
+   // Sync local auto-ticking state with the actual interval state (needed if initialized differently)
+   useEffect(() => {
+        // Check if the interval is running globally (implementation detail, assume true initially)
+        // This could be improved by exposing the interval ID or a boolean from the store
+        // For now, assume it starts automatically based on useNetworkStore logic
+   }, []);
+
 
   const handleInitialize = () => {
+    stopAutoTick(); // Stop current ticks before re-initializing
+    setIsAutoTicking(false);
     initializeNetwork(networkSize);
     selectCell(null);
     toast({ title: "Network Initialized", description: `Created ${networkSize} cells.` });
+    // Optionally restart ticking after init
+    // startAutoTick();
+    // setIsAutoTicking(true);
   };
 
    const handleSetPurpose = async () => {
@@ -177,23 +189,23 @@ export const ControlPanel: React.FC = () => {
     }
   };
 
-
-  const handleToggleAutoTick = () => {
-    if (isAutoTicking) {
-      stopAutoTick();
-      toast({ title: "Auto-Tick Paused" });
-    } else {
-      startAutoTick();
-      toast({ title: "Auto-Tick Resumed" });
-    }
-    setIsAutoTicking(!isAutoTicking);
+  const handleStartTicks = () => {
+    startAutoTick();
+    setIsAutoTicking(true);
+    toast({ title: "Auto-Tick Started" });
   };
 
-   const handleManualTick = () => {
-    if(isAutoTicking) {
-        stopAutoTick();
-        setIsAutoTicking(false);
-        toast({ title: "Auto-Tick Paused for Manual Tick"});
+  const handleStopTicks = () => {
+    stopAutoTick();
+    setIsAutoTicking(false);
+    toast({ title: "Auto-Tick Stopped" });
+  };
+
+  const handleManualTick = () => {
+    if (isAutoTicking) {
+      stopAutoTick();
+      setIsAutoTicking(false);
+      toast({ title: "Auto-Tick Paused for Manual Tick" });
     }
     tick();
     toast({ title: "Manual Tick Executed" });
@@ -278,7 +290,7 @@ export const ControlPanel: React.FC = () => {
 
    const handleOpenRequirements = () => {
        window.open('/requirements.html', '_blank');
-       toast({ title: "Opening Documentation"});
+       toast({ title: "Opening Requirements Document"});
    }
 
 
@@ -336,13 +348,17 @@ export const ControlPanel: React.FC = () => {
 
                   <Separator />
                    <div className="flex gap-2">
-                       <Button onClick={handleToggleAutoTick} size="sm" variant="outline" className="flex-1">
-                           {isAutoTicking ? 'Pause Ticks' : 'Resume Ticks'}
+                        <Button onClick={handleStartTicks} size="sm" variant="secondary" className="flex-1" disabled={isAutoTicking}>
+                           <Play className="mr-2 size-4" /> Start Ticks
                        </Button>
-                       <Button onClick={handleManualTick} size="sm" variant="outline" className="flex-1" disabled={isAutoTicking}>
-                           Manual Tick
+                       <Button onClick={handleStopTicks} size="sm" variant="destructive" className="flex-1" disabled={!isAutoTicking}>
+                          <Square className="mr-2 size-4" /> Stop Ticks
                        </Button>
                    </div>
+                    <Button onClick={handleManualTick} size="sm" variant="outline" className="w-full" disabled={isAutoTicking}>
+                         <Clock className="mr-2 size-4" /> Manual Tick
+                    </Button>
+
 
                    {/* Add Cell Section */}
                    <Separator />
@@ -491,7 +507,7 @@ export const ControlPanel: React.FC = () => {
                          <select
                             id="target-cell"
                             value={targetCellId}
-                            onChange={(e) => setTargetCellId(e.target.value)}
+                            onChange={(e) => setTargetCellId(e.target.value as typeof targetCellId)}
                             className="w-full mt-1 flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             <option value="broadcast">Broadcast to All</option>
@@ -557,3 +573,4 @@ export const ControlPanel: React.FC = () => {
     </>
   );
 };
+
