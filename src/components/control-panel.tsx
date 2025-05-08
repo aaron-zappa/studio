@@ -34,13 +34,13 @@ import type { CellId } from '@/types';
 import { cn } from '@/lib/utils';
 
 
-// Define sensor types
+// Define sensor types with icons
 const sensorTypes = [
     { value: 'Temperature Sensor', label: 'Temperature', icon: Thermometer },
-    { value: 'Pressure Sensor', label: 'Pressure', icon: BarChart },
+    { value: 'Pressure Sensor', label: 'Pressure', icon: BarChart }, // Using BarChart as a proxy
     { value: 'Humidity Sensor', label: 'Humidity', icon: Droplet },
     { value: 'Light Sensor', label: 'Light', icon: Lightbulb },
-    { value: 'Motion Sensor', label: 'Motion', icon: Eye },
+    { value: 'Motion Sensor', label: 'Motion', icon: Eye }, // Using Eye as a proxy
     { value: 'Sound Sensor', label: 'Sound', icon: Ear },
     { value: 'Gas Sensor', label: 'Gas', icon: Wind },
     { value: 'Proximity Sensor', label: 'Proximity', icon: ScanLine },
