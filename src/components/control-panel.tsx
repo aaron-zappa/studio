@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { startAutoTick, stopAutoTick, MAX_CELLS } from '@/hooks/useNetworkStore'; // Import MAX_CELLS
 import { Slider } from '@/components/ui/slider';
-import { AlertCircle, Bot, BrainCircuit, Clock, HelpCircle, MessageSquare, Plus, Send, Trash2, Zap, Milestone, ListTree, Target, History, User, RefreshCw, BedDouble, ScanLine, Thermometer, BarChart, Waves, Wind, Lightbulb, Droplet, Rss, Eye, Ear, Paintbrush, MinusSquare, BookOpen, Play, Square } from 'lucide-react'; // Added Play, Square icons
+import { AlertCircle, Bot, BrainCircuit, Clock, HelpCircle, MessageSquare, Plus, Send, Trash2, Zap, Milestone, ListTree, Target, History, User, RefreshCw, BedDouble, ScanLine, Thermometer, BarChart, Waves, Wind, Lightbulb, Droplet, Rss, Eye, Ear, Paintbrush, MinusSquare, BookOpen, Play, Square, Github } from 'lucide-react'; // Added Play, Square, Github icons
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Sidebar,
@@ -293,6 +293,14 @@ export const ControlPanel: React.FC = () => {
        toast({ title: "Opening Requirements Document"});
    }
 
+   const handleCommitToGitHub = () => {
+    toast({
+      title: "Commit to GitHub",
+      description: "This feature is conceptual and not implemented in this demo.",
+      variant: "default",
+    });
+   };
+
 
   return (
     <>
@@ -306,7 +314,7 @@ export const ControlPanel: React.FC = () => {
         <SidebarSeparator />
         <SidebarContent className="p-0">
           <ScrollArea className="h-full px-2">
-            <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3']} className="w-full">
+            <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3', 'item-4']} className="w-full">
               {/* Network Controls */}
               <AccordionItem value="item-1">
                 <AccordionTrigger className="px-2 text-base hover:no-underline">
@@ -565,6 +573,23 @@ export const ControlPanel: React.FC = () => {
                     </div>
                  </AccordionContent>
                </AccordionItem>
+
+                {/* GitHub Controls */}
+                <AccordionItem value="item-4">
+                    <AccordionTrigger className="px-2 text-base hover:no-underline">
+                        <div className="flex items-center gap-2">
+                            <Github className="size-4" /> GitHub Controls
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="p-2 space-y-4">
+                        <Button onClick={handleCommitToGitHub} size="sm" className="w-full" variant="outline">
+                            <Github className="mr-2 size-4" /> Commit to GitHub (Conceptual)
+                        </Button>
+                        <p className="text-xs text-muted-foreground text-center">
+                            This is a placeholder for demonstrating GitHub integration features.
+                        </p>
+                    </AccordionContent>
+                </AccordionItem>
 
             </Accordion>
              <div className="h-10"></div> {/* Spacer */}
