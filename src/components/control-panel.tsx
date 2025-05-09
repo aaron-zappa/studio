@@ -24,7 +24,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarGroup,
+  SidebarGroup,  
   SidebarGroupLabel,
   SidebarSeparator,
   SidebarTrigger,
@@ -93,6 +93,8 @@ export const ControlPanel: React.FC = () => {
   const [customRole, setCustomRole] = useState('');
   const [selectedSensorType, setSelectedSensorType] = useState<string | undefined>(undefined);
   const [ageReductionAmount, setAgeReductionAmount] = useState<number>(10);
+  const [commitMessage, setCommitMessage] = useState('');
+  const [isCommitting, setIsCommitting] = useState(false);
 
 
   const selectedCell = selectedCellId ? getCellById(selectedCellId) : null;
@@ -293,13 +295,30 @@ export const ControlPanel: React.FC = () => {
        toast({ title: "Opening Requirements Document"});
    }
 
-   const handleCommitToGitHub = () => {
-    toast({
-      title: "Commit to GitHub",
-      description: "This feature is conceptual and not implemented in this demo.",
-      variant: "default",
-    });
-   };
+    const handleCommitToGitHub = async () => {
+        setIsCommitting(true);
+        try {
+            const response = await fetch('/api/git/commit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: commitMessage }),
+            });
+
+            if (response.ok) {
+                toast({ title: "Commit Successful", description: "Changes committed successfully." });
+                setCommitMessage('');
+            } else {
+                const errorData = await response.json();
+                toast({ title: "Commit Failed", description: errorData.error || "An error occurred while committing.", variant: "destructive" });
+            }
+        } catch (error) {
+            toast({ title: "Commit Error", description: "An unexpected error occurred.", variant: "destructive" });
+        } finally {
+            setIsCommitting(false);
+        }
+    };
 
 
   return (
@@ -582,13 +601,24 @@ export const ControlPanel: React.FC = () => {
                         </div>
                     </AccordionTrigger>
                     <AccordionContent className="p-2 space-y-4">
-                        <Button onClick={handleCommitToGitHub} size="sm" className="w-full" variant="outline">
-                            <Github className="mr-2 size-4" /> Commit to GitHub (Conceptual)
+                        <div className="space-y-2">
+                            <Label htmlFor="commit-message">Commit Message</Label>
+                            <Input
+                                id="commit-message"
+                                placeholder="Enter commit message..."
+                                value={commitMessage}
+                                onChange={(e) => setCommitMessage(e.target.value)}
+                            />
+                        </div>
+                        <Button onClick={handleCommitToGitHub} size="sm" className="w-full" variant="outline" disabled={isCommitting}>
+                            {isCommitting && <RefreshCw className="mr-2 size-4 animate-spin" />}
+                            <Github className="mr-2 size-4" /> Commit to GitHub
                         </Button>
-                        <p className="text-xs text-muted-foreground text-center">
-                            This is a placeholder for demonstrating GitHub integration features.
-                        </p>
-                    </AccordionContent>
+                        </AccordionContent>
+                    </AccordionItem>
+
+                 
+
                 </AccordionItem>
 
             </Accordion>
